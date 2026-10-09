@@ -5,7 +5,10 @@ import {
   useState,
 } from 'react'
 
-import { motion, AnimatePresence } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+} from 'motion/react'
 
 import {
   ArrowLeft,
@@ -54,6 +57,9 @@ export function ImpetoTraining() {
   const [feedback, setFeedback] =
     useState<HitResult>(null)
 
+  const [damageFeedback, setDamageFeedback] =
+    useState<number | null>(null)
+
   const [targetHp, setTargetHp] =
     useState(TARGET_MAX_HP)
 
@@ -61,6 +67,9 @@ export function ImpetoTraining() {
     useState(1)
 
   const [isImpacting, setIsImpacting] =
+    useState(false)
+
+  const [isTargetBroken, setIsTargetBroken] =
     useState(false)
 
   const animationRef =
@@ -89,13 +98,27 @@ export function ImpetoTraining() {
 
     setTargetHp(TARGET_MAX_HP)
     setTargetNumber(1)
+
     setMeter(0)
     setDirection(1)
+
     setFeedback(null)
+    setDamageFeedback(null)
+
+    setIsImpacting(false)
+    setIsTargetBroken(false)
+
+    lockedRef.current = false
 
     setCountdown(3)
     setPhase('countdown')
   }
+
+  /*
+  ==========================================
+  CONTAGEM REGRESSIVA
+  ==========================================
+  */
 
   useEffect(() => {
     if (phase !== 'countdown') {
@@ -103,18 +126,36 @@ export function ImpetoTraining() {
     }
 
     if (countdown <= 0) {
-      setPhase('playing')
-      return
+      const timer =
+        window.setTimeout(() => {
+          setPhase('playing')
+        }, 400)
+
+      return () => {
+        window.clearTimeout(timer)
+      }
     }
 
-    const timer = window.setTimeout(() => {
-      setCountdown((value) => value - 1)
-    }, 700)
+    const timer =
+      window.setTimeout(() => {
+        setCountdown(
+          (value) => value - 1
+        )
+      }, 700)
 
     return () => {
       window.clearTimeout(timer)
     }
-  }, [phase, countdown])
+  }, [
+    phase,
+    countdown,
+  ])
+
+  /*
+  ==========================================
+  MOVIMENTO DO MEDIDOR
+  ==========================================
+  */
 
   useEffect(() => {
     if (phase !== 'playing') {
@@ -128,39 +169,55 @@ export function ImpetoTraining() {
       return
     }
 
-    const animate = (time: number) => {
-      if (lastFrameRef.current === null) {
+    const animate = (
+      time: number
+    ) => {
+      if (
+        lastFrameRef.current === null
+      ) {
         lastFrameRef.current = time
       }
 
       const delta =
-        (time - lastFrameRef.current) / 1000
+        (
+          time -
+          lastFrameRef.current
+        ) / 1000
 
       lastFrameRef.current = time
 
-      setMeter((oldValue) => {
-        let next =
-          oldValue + direction * speed * delta
+      setMeter(
+        (oldValue) => {
+          let next =
+            oldValue +
+            direction *
+              speed *
+              delta
 
-        if (next >= 100) {
-          next = 100
-          setDirection(-1)
+          if (next >= 100) {
+            next = 100
+            setDirection(-1)
+          }
+
+          if (next <= 0) {
+            next = 0
+            setDirection(1)
+          }
+
+          return next
         }
-
-        if (next <= 0) {
-          next = 0
-          setDirection(1)
-        }
-
-        return next
-      })
+      )
 
       animationRef.current =
-        requestAnimationFrame(animate)
+        requestAnimationFrame(
+          animate
+        )
     }
 
     animationRef.current =
-      requestAnimationFrame(animate)
+      requestAnimationFrame(
+        animate
+      )
 
     return () => {
       if (animationRef.current) {
@@ -177,79 +234,180 @@ export function ImpetoTraining() {
     speed,
   ])
 
-  const hit = useCallback(() => {
-    if (phase !== 'playing') {
-      return
-    }
+  /*
+  ==========================================
+  EXECUTAR GOLPE
+  ==========================================
+  */
 
-    if (lockedRef.current) {
-      return
-    }
+  const hit =
+    useCallback(() => {
+      if (
+        phase !== 'playing' ||
+        lockedRef.current ||
+        isTargetBroken
+      ) {
+        return
+      }
 
-    lockedRef.current = true
+      lockedRef.current = true
 
-    const distance =
-      Math.abs(meter - 50)
+      const distance =
+        Math.abs(
+          meter - 50
+        )
 
-    let result: HitResult = 'FRACO'
-    let damage = 0
-    let earnsStack = false
+      let result: HitResult =
+        'FRACO'
 
-    if (distance <= 6) {
-      result = 'PERFEITO'
-      damage = 2
-      earnsStack = true
-    } else if (distance <= 18) {
-      result = 'BOM'
-      damage = 1
-      earnsStack = true
-    }
+      let damage = 0
 
-    setFeedback(result)
+      /*
+      PERFEITO:
+      centro +/- 6%
+      5 de dano
 
-    setIsImpacting(true)
+      BOM:
+      centro +/- 18%
+      3 de dano
 
-    window.setTimeout(() => {
-      setIsImpacting(false)
-    }, 150)
+      FRACO:
+      fora dessas zonas
+      0 de dano
+      */
 
-    if (earnsStack) {
-      addStack(1)
+      if (distance <= 6) {
+        result = 'PERFEITO'
+        damage = 5
+      } else if (
+        distance <= 18
+      ) {
+        result = 'BOM'
+        damage = 3
+      }
 
-      setTargetHp((oldHp) => {
-        const nextHp =
-          Math.max(0, oldHp - damage)
+      setFeedback(result)
 
-        if (nextHp <= 0) {
-          window.setTimeout(() => {
-            setTargetNumber(
-              (value) => value + 1
-            )
+      setDamageFeedback(
+        damage > 0
+          ? damage
+          : null
+      )
 
-            setTargetHp(
-              TARGET_MAX_HP
-            )
-          }, 220)
+      setIsImpacting(true)
+
+      window.setTimeout(() => {
+        setIsImpacting(false)
+      }, 150)
+
+      /*
+      ======================================
+      DANO NO ALVO
+      ======================================
+
+      O dano excedente NÃO é transferido.
+
+      Exemplo:
+
+      5 HP
+      -3
+      = 2 HP
+
+      próximo golpe:
+      -3
+
+      alvo destruído.
+
+      O -1 excedente é descartado.
+
+      Novo alvo:
+      5 HP.
+      */
+
+      if (damage > 0) {
+        const remainingHp = Math.max(
+          0,
+          targetHp - damage
+        )
+
+        /*
+        Atualizamos a integridade diretamente.
+
+        IMPORTANTE:
+        Não colocamos addStack dentro de um
+        callback de setState, pois o React
+        StrictMode pode executar callbacks
+        de atualização mais de uma vez
+        durante o desenvolvimento.
+        */
+
+        setTargetHp(remainingHp)
+
+        /*
+        O Stack só é concedido quando
+        a integridade chega a zero.
+        */
+
+        if (remainingHp === 0) {
+          setIsTargetBroken(true)
+
+          /*
+          EXATAMENTE 1 STACK
+          POR ALVO DESTRUÍDO.
+          */
+
+          addStack(1)
+
+          window.setTimeout(
+            () => {
+              setTargetNumber(
+                (value) =>
+                  value + 1
+              )
+
+              /*
+              Dano excedente é descartado.
+              Todo novo alvo começa em 5/5.
+              */
+
+              setTargetHp(
+                TARGET_MAX_HP
+              )
+
+              setIsTargetBroken(
+                false
+              )
+            },
+            300
+          )
         }
+      }
 
-        return nextHp
-      })
-    }
+      window.setTimeout(() => {
+        setFeedback(null)
+        setDamageFeedback(null)
 
-    window.setTimeout(() => {
-      setFeedback(null)
-      lockedRef.current = false
-    }, 330)
-  }, [
-    phase,
-    meter,
-    addStack,
-  ])
+        lockedRef.current = false
+      }, 360)
+    }, [
+      phase,
+      meter,
+      targetHp,
+      addStack,
+      isTargetBroken,
+    ])
+
+  /*
+  ==========================================
+  FINAL DO TREINO
+  ==========================================
+  */
 
   useEffect(() => {
     if (
       targetStacks > 0 &&
-      currentStacks >= targetStacks &&
+      currentStacks >=
+        targetStacks &&
       phase === 'playing'
     ) {
       setPhase('complete')
@@ -260,13 +418,21 @@ export function ImpetoTraining() {
     phase,
   ])
 
+  /*
+  ==========================================
+  CONTROLE DESKTOP
+  ==========================================
+  */
+
   useEffect(() => {
     const handleKeyDown = (
       event: KeyboardEvent
     ) => {
       if (
-        event.code === 'Space' ||
-        event.code === 'Enter'
+        event.code ===
+          'Space' ||
+        event.code ===
+          'Enter'
       ) {
         event.preventDefault()
         hit()
@@ -286,16 +452,23 @@ export function ImpetoTraining() {
     }
   }, [hit])
 
+  /*
+  ==========================================
+  UI
+  ==========================================
+  */
+
   return (
     <main
       className="
         min-h-[100dvh]
-        bg-[#080808]
-        text-white
         select-none
         overscroll-none
+        bg-[#080808]
+        text-white
       "
     >
+
       <div
         className="
           mx-auto
@@ -311,13 +484,21 @@ export function ImpetoTraining() {
           lg:max-w-xl
         "
       >
-        {/* =================================================
-            HUD
-        ================================================= */}
 
-        <header className="shrink-0">
+        {/* HUD */}
 
-          <div className="flex items-center justify-between gap-3">
+        <header
+          className="shrink-0"
+        >
+
+          <div
+            className="
+              flex
+              items-center
+              justify-between
+              gap-3
+            "
+          >
 
             <button
               type="button"
@@ -336,37 +517,85 @@ export function ImpetoTraining() {
               "
               aria-label="Voltar"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft
+                size={20}
+              />
             </button>
 
-            <div className="min-w-0 flex-1">
+            <div
+              className="
+                min-w-0
+                flex-1
+              "
+            >
 
-              <div className="flex items-center gap-2">
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
+              >
                 <Flame
                   size={18}
-                  className="text-orange-400"
+                  className="
+                    text-orange-400
+                  "
                 />
 
-                <h1 className="truncate text-lg font-black">
+                <h1
+                  className="
+                    truncate
+                    text-lg
+                    font-black
+                  "
+                >
                   Ímpeto
                 </h1>
               </div>
 
-              <p className="text-xs text-white/40">
+              <p
+                className="
+                  text-xs
+                  text-white/40
+                "
+              >
                 Quebra de Alvos
               </p>
 
             </div>
 
-            <div className="text-right">
+            <div
+              className="
+                text-right
+              "
+            >
 
-              <p className="text-[10px] font-black uppercase tracking-widest text-white/35">
+              <p
+                className="
+                  text-[10px]
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-white/35
+                "
+              >
                 Stacks
               </p>
 
-              <p className="text-lg font-black">
+              <p
+                className="
+                  text-lg
+                  font-black
+                "
+              >
                 {currentStacks}
-                <span className="text-white/30">
+
+                <span
+                  className="
+                    text-white/30
+                  "
+                >
                   /{targetStacks}
                 </span>
               </p>
@@ -375,7 +604,15 @@ export function ImpetoTraining() {
 
           </div>
 
-          <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="
+              mt-4
+              h-2
+              overflow-hidden
+              rounded-full
+              bg-white/10
+            "
+          >
 
             <motion.div
               className="
@@ -384,7 +621,8 @@ export function ImpetoTraining() {
                 bg-orange-500
               "
               animate={{
-                width: `${progress}%`,
+                width:
+                  `${progress}%`,
               }}
             />
 
@@ -392,9 +630,7 @@ export function ImpetoTraining() {
 
         </header>
 
-        {/* =================================================
-            ÁREA PRINCIPAL
-        ================================================= */}
+        {/* CONTEÚDO */}
 
         <section
           className="
@@ -409,23 +645,30 @@ export function ImpetoTraining() {
           "
         >
 
-          <AnimatePresence mode="wait">
+          <AnimatePresence
+            mode="wait"
+          >
+
+            {/* READY */}
 
             {phase === 'ready' && (
               <motion.div
                 key="ready"
+
                 initial={{
                   opacity: 0,
                   scale: 0.96,
                 }}
+
                 animate={{
                   opacity: 1,
                   scale: 1,
                 }}
+
                 exit={{
                   opacity: 0,
-                  scale: 0.96,
                 }}
+
                 className="
                   flex
                   w-full
@@ -452,13 +695,28 @@ export function ImpetoTraining() {
                   🔥
                 </div>
 
-                <h2 className="mt-6 text-3xl font-black">
+                <h2
+                  className="
+                    mt-6
+                    text-3xl
+                    font-black
+                  "
+                >
                   Quebra de Alvos
                 </h2>
 
-                <p className="mt-3 max-w-xs text-sm leading-6 text-white/45">
-                  Acerte o golpe quando o marcador estiver
-                  próximo do centro da barra.
+                <p
+                  className="
+                    mt-3
+                    max-w-xs
+                    text-sm
+                    leading-6
+                    text-white/45
+                  "
+                >
+                  Destrua os alvos
+                  acertando o momento
+                  certo do golpe.
                 </p>
 
                 <div
@@ -468,54 +726,118 @@ export function ImpetoTraining() {
                     w-full
                     grid-cols-3
                     gap-2
-                    text-center
                   "
                 >
 
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-xs font-black text-white/30">
+                  <div
+                    className="
+                      rounded-2xl
+                      bg-white/5
+                      p-3
+                    "
+                  >
+                    <p
+                      className="
+                        text-xs
+                        font-black
+                        text-white/30
+                      "
+                    >
                       FRACO
                     </p>
 
-                    <p className="mt-1 text-sm font-bold">
-                      0 Stack
+                    <p
+                      className="
+                        mt-1
+                        text-sm
+                        font-bold
+                      "
+                    >
+                      0 Dano
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-white/5 p-3">
-                    <p className="text-xs font-black text-white/30">
+                  <div
+                    className="
+                      rounded-2xl
+                      bg-white/5
+                      p-3
+                    "
+                  >
+                    <p
+                      className="
+                        text-xs
+                        font-black
+                        text-white/30
+                      "
+                    >
                       BOM
                     </p>
 
-                    <p className="mt-1 text-sm font-bold">
-                      +1 Stack
+                    <p
+                      className="
+                        mt-1
+                        text-sm
+                        font-bold
+                      "
+                    >
+                      3 Dano
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-orange-500/10 p-3">
-                    <p className="text-xs font-black text-orange-300">
+                  <div
+                    className="
+                      rounded-2xl
+                      bg-orange-500/10
+                      p-3
+                    "
+                  >
+                    <p
+                      className="
+                        text-xs
+                        font-black
+                        text-orange-300
+                      "
+                    >
                       PERFEITO
                     </p>
 
-                    <p className="mt-1 text-sm font-bold">
-                      +1 Stack
+                    <p
+                      className="
+                        mt-1
+                        text-sm
+                        font-bold
+                      "
+                    >
+                      5 Dano
                     </p>
                   </div>
 
                 </div>
 
+                <p
+                  className="
+                    mt-5
+                    text-xs
+                    leading-5
+                    text-white/30
+                  "
+                >
+                  Cada alvo destruído
+                  concede 1 Stack.
+                </p>
+
                 <button
                   type="button"
                   onClick={startGame}
                   className="
-                    mt-8
+                    mt-7
                     min-h-14
                     w-full
                     rounded-2xl
                     bg-orange-500
                     px-6
                     py-4
-                    text-base
                     font-black
                     text-black
                     active:scale-[0.98]
@@ -527,36 +849,67 @@ export function ImpetoTraining() {
               </motion.div>
             )}
 
-            {phase === 'countdown' && (
+            {/* COUNTDOWN */}
+
+            {phase ===
+              'countdown' && (
               <motion.div
-                key={`countdown-${countdown}`}
+                key={
+                  `countdown-${countdown}`
+                }
+
                 initial={{
                   opacity: 0,
                   scale: 0.5,
                 }}
+
                 animate={{
                   opacity: 1,
                   scale: 1,
                 }}
+
                 exit={{
                   opacity: 0,
                   scale: 1.4,
                 }}
-                className="text-center"
+
+                className="
+                  text-center
+                "
               >
 
                 {countdown > 0 ? (
                   <>
-                    <p className="text-xs font-black uppercase tracking-[0.3em] text-white/30">
+                    <p
+                      className="
+                        text-xs
+                        font-black
+                        uppercase
+                        tracking-[0.3em]
+                        text-white/30
+                      "
+                    >
                       Prepare-se
                     </p>
 
-                    <p className="mt-4 text-8xl font-black">
+                    <p
+                      className="
+                        mt-4
+                        text-8xl
+                        font-black
+                      "
+                    >
                       {countdown}
                     </p>
                   </>
                 ) : (
-                  <p className="text-5xl font-black text-orange-400">
+                  <p
+                    className="
+                      text-5xl
+                      font-black
+                      text-orange-400
+                    "
+                  >
                     VAI!
                   </p>
                 )}
@@ -564,15 +917,21 @@ export function ImpetoTraining() {
               </motion.div>
             )}
 
-            {phase === 'playing' && (
+            {/* PLAYING */}
+
+            {phase ===
+              'playing' && (
               <motion.div
                 key="playing"
+
                 initial={{
                   opacity: 0,
                 }}
+
                 animate={{
                   opacity: 1,
                 }}
+
                 className="
                   flex
                   h-full
@@ -611,28 +970,57 @@ export function ImpetoTraining() {
 
                   <motion.div
                     animate={
-                      isImpacting
+                      isTargetBroken
                         ? {
-                            x: [
-                              0,
-                              -8,
-                              8,
-                              -4,
-                              4,
-                              0,
-                            ],
                             scale: [
                               1,
-                              0.94,
-                              1.04,
+                              1.12,
+                              0,
+                            ],
+                            rotate: [
+                              0,
+                              -5,
+                              10,
+                            ],
+                            opacity: [
                               1,
+                              1,
+                              0,
                             ],
                           }
-                        : {
-                            x: 0,
-                            scale: 1,
-                          }
+                        : isImpacting
+                          ? {
+                              x: [
+                                0,
+                                -8,
+                                8,
+                                -4,
+                                4,
+                                0,
+                              ],
+
+                              scale: [
+                                1,
+                                0.94,
+                                1.04,
+                                1,
+                              ],
+                            }
+                          : {
+                              x: 0,
+                              scale: 1,
+                              opacity: 1,
+                              rotate: 0,
+                            }
                     }
+
+                    transition={{
+                      duration:
+                        isTargetBroken
+                          ? 0.28
+                          : 0.15,
+                    }}
+
                     className="
                       relative
                       flex
@@ -684,27 +1072,63 @@ export function ImpetoTraining() {
 
                   </motion.div>
 
-                  <div className="mt-5 w-40">
+                  {/* VIDA DO ALVO */}
 
-                    <div className="mb-2 flex justify-between text-[10px] font-black uppercase tracking-widest text-white/30">
+                  <div
+                    className="
+                      mt-5
+                      w-44
+                    "
+                  >
+
+                    <div
+                      className="
+                        mb-2
+                        flex
+                        justify-between
+                        text-[10px]
+                        font-black
+                        uppercase
+                        tracking-widest
+                        text-white/30
+                      "
+                    >
 
                       <span>
                         Integridade
                       </span>
 
                       <span>
-                        {targetHp}/{TARGET_MAX_HP}
+                        {targetHp}
+                        /
+                        {TARGET_MAX_HP}
                       </span>
 
                     </div>
 
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div
+                      className="
+                        h-2
+                        overflow-hidden
+                        rounded-full
+                        bg-white/10
+                      "
+                    >
 
                       <motion.div
-                        className="h-full bg-orange-500"
+                        className="
+                          h-full
+                          bg-orange-500
+                        "
                         animate={{
                           width:
-                            `${(targetHp / TARGET_MAX_HP) * 100}%`,
+                            `${
+                              (
+                                targetHp /
+                                TARGET_MAX_HP
+                              ) *
+                              100
+                            }%`,
                         }}
                       />
 
@@ -712,37 +1136,76 @@ export function ImpetoTraining() {
 
                   </div>
 
-                  <div className="mt-4 h-10">
+                  {/* FEEDBACK */}
 
-                    <AnimatePresence mode="wait">
+                  <div
+                    className="
+                      mt-4
+                      h-14
+                      text-center
+                    "
+                  >
+
+                    <AnimatePresence
+                      mode="wait"
+                    >
 
                       {feedback && (
-                        <motion.p
+                        <motion.div
                           key={feedback}
+
                           initial={{
                             opacity: 0,
                             y: 8,
                             scale: 0.8,
                           }}
+
                           animate={{
                             opacity: 1,
                             y: 0,
                             scale: 1,
                           }}
+
                           exit={{
                             opacity: 0,
-                            y: -8,
+                            y: -6,
                           }}
-                          className={
-                            feedback === 'PERFEITO'
-                              ? 'text-xl font-black text-orange-400'
-                              : feedback === 'BOM'
-                                ? 'text-xl font-black text-white'
-                                : 'text-xl font-black text-white/35'
-                          }
                         >
-                          {feedback}
-                        </motion.p>
+
+                          <p
+                            className={
+                              feedback ===
+                              'PERFEITO'
+                                ? 'text-xl font-black text-orange-400'
+                                : feedback ===
+                                    'BOM'
+                                  ? 'text-xl font-black text-white'
+                                  : 'text-xl font-black text-white/35'
+                            }
+                          >
+                            {feedback}
+                          </p>
+
+                          {damageFeedback !==
+                            null && (
+                            <p
+                              className="
+                                mt-1
+                                text-xs
+                                font-black
+                                text-white/35
+                              "
+                            >
+                              -
+                              {
+                                damageFeedback
+                              }
+                              {' '}
+                              Integridade
+                            </p>
+                          )}
+
+                        </motion.div>
                       )}
 
                     </AnimatePresence>
@@ -751,12 +1214,27 @@ export function ImpetoTraining() {
 
                 </div>
 
-                {/* MEDIDOR */}
+                {/* BARRA */}
 
-                <div className="w-full">
+                <div
+                  className="
+                    w-full
+                  "
+                >
 
-                  <div className="mb-2 flex justify-between px-1 text-[10px] font-black uppercase tracking-wider text-white/30">
-
+                  <div
+                    className="
+                      mb-2
+                      flex
+                      justify-between
+                      px-1
+                      text-[10px]
+                      font-black
+                      uppercase
+                      tracking-wider
+                      text-white/30
+                    "
+                  >
                     <span>
                       Fraco
                     </span>
@@ -768,7 +1246,6 @@ export function ImpetoTraining() {
                     <span>
                       Fraco
                     </span>
-
                   </div>
 
                   <div
@@ -783,7 +1260,7 @@ export function ImpetoTraining() {
                     "
                   >
 
-                    {/* ZONA BOA */}
+                    {/* BOM */}
 
                     <div
                       className="
@@ -796,7 +1273,7 @@ export function ImpetoTraining() {
                       "
                     />
 
-                    {/* ZONA PERFEITA */}
+                    {/* PERFEITO */}
 
                     <div
                       className="
@@ -809,7 +1286,7 @@ export function ImpetoTraining() {
                       "
                     />
 
-                    {/* LINHA CENTRAL */}
+                    {/* CENTRO */}
 
                     <div
                       className="
@@ -838,20 +1315,23 @@ export function ImpetoTraining() {
                         shadow-[0_0_14px_rgba(255,255,255,0.7)]
                       "
                       style={{
-                        left: `${meter}%`,
+                        left:
+                          `${meter}%`,
                       }}
                     />
 
                   </div>
 
-                  {/* BOTÃO DE TOQUE */}
-
                   <button
                     type="button"
-                    onPointerDown={(event) => {
+
+                    onPointerDown={(
+                      event
+                    ) => {
                       event.preventDefault()
                       hit()
                     }}
+
                     className="
                       mt-4
                       flex
@@ -867,9 +1347,7 @@ export function ImpetoTraining() {
                       font-black
                       text-black
                       shadow-lg
-                      shadow-orange-950/20
                       active:scale-[0.97]
-                      sm:min-h-[82px]
                     "
                   >
                     TOCAR PARA GOLPEAR
@@ -885,7 +1363,8 @@ export function ImpetoTraining() {
                       md:block
                     "
                   >
-                    Desktop: Espaço ou Enter
+                    Desktop:
+                    Espaço ou Enter
                   </p>
 
                 </div>
@@ -893,17 +1372,23 @@ export function ImpetoTraining() {
               </motion.div>
             )}
 
-            {phase === 'complete' && (
+            {/* COMPLETE */}
+
+            {phase ===
+              'complete' && (
               <motion.div
                 key="complete"
+
                 initial={{
                   opacity: 0,
                   scale: 0.9,
                 }}
+
                 animate={{
                   opacity: 1,
                   scale: 1,
                 }}
+
                 className="
                   flex
                   w-full
@@ -925,7 +1410,9 @@ export function ImpetoTraining() {
                     text-black
                   "
                 >
-                  <Trophy size={44} />
+                  <Trophy
+                    size={44}
+                  />
                 </div>
 
                 <p
@@ -941,16 +1428,34 @@ export function ImpetoTraining() {
                   Treino concluído
                 </p>
 
-                <h2 className="mt-2 text-3xl font-black">
+                <h2
+                  className="
+                    mt-2
+                    text-3xl
+                    font-black
+                  "
+                >
                   Ímpeto Finalizado
                 </h2>
 
-                <p className="mt-3 text-white/45">
-                  Você completou
+                <p
+                  className="
+                    mt-3
+                    text-white/45
+                  "
+                >
+                  Você destruiu
                   {' '}
-                  <strong className="text-white">
-                    {targetStacks} Stacks
-                  </strong>.
+                  <strong
+                    className="
+                      text-white
+                    "
+                  >
+                    {targetStacks}
+                    {' '}
+                    alvos
+                  </strong>
+                  .
                 </p>
 
                 <button
@@ -972,7 +1477,10 @@ export function ImpetoTraining() {
                     active:scale-[0.98]
                   "
                 >
-                  <RotateCcw size={18} />
+                  <RotateCcw
+                    size={18}
+                  />
+
                   Treinar Novamente
                 </button>
 
@@ -989,7 +1497,6 @@ export function ImpetoTraining() {
                     bg-white/5
                     px-6
                     font-black
-                    text-white
                     active:scale-[0.98]
                   "
                 >

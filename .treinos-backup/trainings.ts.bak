@@ -17,9 +17,9 @@ export const trainings: TrainingDefinition[] = [
     icon: '🌪️',
     minigame: 'Esquiva Relâmpago',
     description:
-      'Desvie continuamente dos projéteis usando movimentação manual.',
+      'Reaja rapidamente aos ataques e ameaças da arena.',
     stacks: 200,
-    difficulty: 'medio',
+    difficulty: 'dificil',
   },
   {
     id: 'vigor',
@@ -27,9 +27,9 @@ export const trainings: TrainingDefinition[] = [
     icon: '🛡️',
     minigame: 'Resistência Extrema',
     description:
-      'Sobreviva administrando Vida, Energia e diferentes tipos de defesa.',
-    stacks: 50,
-    difficulty: 'dificil',
+      'Administre esforço e resistência enquanto enfrenta obstáculos.',
+    stacks: 120,
+    difficulty: 'facil',
   },
   {
     id: 'fluxo',

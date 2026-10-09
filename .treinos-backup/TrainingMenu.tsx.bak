@@ -44,7 +44,7 @@ export function TrainingMenu() {
     )
 
   const available =
-    (selected?.id === 'impeto' || selected?.id === 'reflexo' || selected?.id === 'vigor')
+    (selected?.id === 'impeto' || selected?.id === 'reflexo')
 
   return (
     <main
@@ -150,7 +150,7 @@ export function TrainingMenu() {
                 selectedTraining
 
               const enabled =
-                (training.id === 'impeto' || training.id === 'reflexo' || training.id === 'vigor')
+                (training.id === 'impeto' || training.id === 'reflexo')
 
               return (
                 <motion.button

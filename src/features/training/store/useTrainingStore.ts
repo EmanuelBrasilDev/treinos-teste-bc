@@ -50,9 +50,12 @@ export const useTrainingStore = create<TrainingState>((set) => ({
 
   addStack: (amount = 1) =>
     set((state) => ({
-      currentStacks: Math.min(
-        state.currentStacks + amount,
-        state.targetStacks
+      currentStacks: Math.max(
+        0,
+        Math.min(
+          state.currentStacks + amount,
+          state.targetStacks
+        )
       ),
     })),
 

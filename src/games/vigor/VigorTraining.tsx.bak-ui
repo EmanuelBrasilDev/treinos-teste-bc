@@ -1,0 +1,4071 @@
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
+
+import {
+  AnimatePresence,
+  motion,
+} from 'motion/react'
+
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Heart,
+  RotateCcw,
+  Shield,
+  Sparkles,
+  Trophy,
+  Zap,
+} from 'lucide-react'
+
+import { useTrainingStore } from '../../features/training/store/useTrainingStore'
+
+type GamePhase =
+  | 'ready'
+  | 'countdown'
+  | 'playing'
+  | 'complete'
+  | 'failed'
+
+type AttackDirection =
+  | 'top'
+  | 'bottom'
+  | 'left'
+  | 'right'
+
+type AttackSize =
+  | 'small'
+  | 'normal'
+  | 'large'
+
+type AttackType =
+  | 'arrow'
+  | 'fireball'
+  | 'mana'
+  | 'wind'
+  | 'rock'
+  | 'impact'
+  | 'heavy'
+
+interface AttackDefinition {
+  type: AttackType
+  name: string
+  symbol: string
+  damage: number
+  guardDamage: number
+  speed: number
+  radius: number
+  background: string
+  glow: string
+}
+
+interface Projectile {
+  id: number
+
+  attack: AttackDefinition
+  direction: AttackDirection
+  size: AttackSize
+
+  x: number
+  y: number
+
+  vx: number
+  vy: number
+
+  radius: number
+
+  damage: number
+  guardDamage: number
+}
+
+const MAX_LIFE = 100
+const MAX_ENERGY = 100
+
+const ENERGY_REGEN = 5
+
+const MAGIC_BLOCK_COST = 8
+const BARRIER_COST = 25
+
+const BARRIER_DURATION = 800
+const MAGIC_REGEN_DELAY = 600
+
+/*
+Personagem visualmente maior.
+
+A hitbox continua menor que o desenho
+para não deixar o jogo injusto.
+*/
+
+const PLAYER_RADIUS = 30
+const MAGIC_INTERCEPT_DISTANCE = 105
+const BARRIER_RADIUS = 112
+
+const WAVE_DELAY = 650
+
+const DIRECTIONS: AttackDirection[] = [
+  'top',
+  'bottom',
+  'left',
+  'right',
+]
+
+const ATTACKS: AttackDefinition[] = [
+  {
+    type: 'arrow',
+    name: 'Flecha',
+    symbol: '➶',
+    damage: 10,
+    guardDamage: 4,
+    speed: 560,
+    radius: 9,
+    background: '#d6d3d1',
+    glow: 'rgba(214,211,209,.75)',
+  },
+
+  {
+    type: 'fireball',
+    name: 'Bola de Fogo',
+    symbol: '🔥',
+    damage: 18,
+    guardDamage: 8,
+    speed: 390,
+    radius: 15,
+    background: '#f97316',
+    glow: 'rgba(249,115,22,.85)',
+  },
+
+  {
+    type: 'mana',
+    name: 'Projétil de Mana',
+    symbol: '✦',
+    damage: 15,
+    guardDamage: 6,
+    speed: 440,
+    radius: 13,
+    background: '#a855f7',
+    glow: 'rgba(168,85,247,.85)',
+  },
+
+  {
+    type: 'wind',
+    name: 'Lâmina de Vento',
+    symbol: '◇',
+    damage: 14,
+    guardDamage: 7,
+    speed: 600,
+    radius: 11,
+    background: '#22d3ee',
+    glow: 'rgba(34,211,238,.85)',
+  },
+
+  {
+    type: 'rock',
+    name: 'Rocha',
+    symbol: '◆',
+    damage: 25,
+    guardDamage: 12,
+    speed: 310,
+    radius: 20,
+    background: '#78716c',
+    glow: 'rgba(120,113,108,.85)',
+  },
+
+  {
+    type: 'impact',
+    name: 'Esfera de Impacto',
+    symbol: '⚡',
+    damage: 30,
+    guardDamage: 16,
+    speed: 390,
+    radius: 21,
+    background: '#eab308',
+    glow: 'rgba(234,179,8,.9)',
+  },
+
+  {
+    type: 'heavy',
+    name: 'Rajada Pesada',
+    symbol: '💥',
+    damage: 40,
+    guardDamage: 22,
+    speed: 285,
+    radius: 27,
+    background: '#ef4444',
+    glow: 'rgba(239,68,68,.9)',
+  },
+]
+
+function randomItem<T>(
+  values: T[]
+): T {
+  return values[
+    Math.floor(
+      Math.random() *
+      values.length
+    )
+  ]
+}
+
+function getSizeMultiplier(
+  size: AttackSize
+) {
+  if (size === 'small') {
+    return 0.75
+  }
+
+  if (size === 'large') {
+    return 1.4
+  }
+
+  return 1
+}
+
+function getSizeScale(
+  size: AttackSize
+) {
+  if (size === 'small') {
+    return 0.78
+  }
+
+  if (size === 'large') {
+    return 1.35
+  }
+
+  return 1
+}
+
+function getAttackPool(
+  wave: number
+) {
+  if (wave <= 8) {
+    return ATTACKS.filter(
+      (attack) =>
+        attack.type === 'arrow' ||
+        attack.type === 'fireball' ||
+        attack.type === 'mana' ||
+        attack.type === 'wind'
+    )
+  }
+
+  if (wave <= 20) {
+    return ATTACKS.filter(
+      (attack) =>
+        attack.type !== 'heavy'
+    )
+  }
+
+  return ATTACKS
+}
+
+function getProjectileCount(
+  wave: number
+) {
+  if (wave <= 8) {
+    return 1
+  }
+
+  if (wave <= 18) {
+    return Math.random() < 0.6
+      ? 1
+      : 2
+  }
+
+  if (wave <= 32) {
+    return Math.random() < 0.45
+      ? 2
+      : 3
+  }
+
+  return Math.random() < 0.5
+    ? 3
+    : 4
+}
+
+function getAttackSize(
+  wave: number
+): AttackSize {
+  const roll =
+    Math.random()
+
+  if (wave <= 12) {
+    if (roll < 0.25) {
+      return 'small'
+    }
+
+    if (roll < 0.92) {
+      return 'normal'
+    }
+
+    return 'large'
+  }
+
+  if (roll < 0.22) {
+    return 'small'
+  }
+
+  if (roll < 0.7) {
+    return 'normal'
+  }
+
+  return 'large'
+}
+
+function distance(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number
+) {
+  const dx = x1 - x2
+  const dy = y1 - y2
+
+  return Math.sqrt(
+    dx * dx +
+    dy * dy
+  )
+}
+
+export function VigorTraining() {
+  const {
+    currentStacks,
+    targetStacks,
+    addStack,
+    resetProgress,
+    returnToMenu,
+  } = useTrainingStore()
+
+  const [
+    phase,
+    setPhase,
+  ] = useState<GamePhase>(
+    'ready'
+  )
+
+  const [
+    countdown,
+    setCountdown,
+  ] = useState(3)
+
+  const [
+    life,
+    setLife,
+  ] = useState(MAX_LIFE)
+
+  const [
+    energy,
+    setEnergy,
+  ] = useState(MAX_ENERGY)
+
+  const [
+    projectiles,
+    setProjectiles,
+  ] = useState<
+    Projectile[]
+  >([])
+
+  const [
+    physicalGuard,
+    setPhysicalGuard,
+  ] = useState(false)
+
+  const [
+    magicDirection,
+    setMagicDirection,
+  ] = useState<
+    AttackDirection | null
+  >(null)
+
+  const [
+    barrierActive,
+    setBarrierActive,
+  ] = useState(false)
+
+  const [
+    waveNumber,
+    setWaveNumber,
+  ] = useState(0)
+
+  const [
+    feedback,
+    setFeedback,
+  ] = useState<
+    string | null
+  >(null)
+
+  const [
+    feedbackDamage,
+    setFeedbackDamage,
+  ] = useState<
+    number | null
+  >(null)
+
+  const [
+    impactFlash,
+    setImpactFlash,
+  ] = useState(false)
+
+  const [
+    lastAttack,
+    setLastAttack,
+  ] = useState<
+    AttackDefinition | null
+  >(null)
+
+  const arenaRef =
+    useRef<
+      HTMLDivElement | null
+    >(null)
+
+  const phaseRef =
+    useRef<GamePhase>(
+      'ready'
+    )
+
+  const lifeRef =
+    useRef(MAX_LIFE)
+
+  const energyRef =
+    useRef(MAX_ENERGY)
+
+  const physicalGuardRef =
+    useRef(false)
+
+  const magicDirectionRef =
+    useRef<
+      AttackDirection | null
+    >(null)
+
+  const barrierActiveRef =
+    useRef(false)
+
+  const barrierUntilRef =
+    useRef(0)
+
+  const regenBlockedUntilRef =
+    useRef(0)
+
+  const projectileIdRef =
+    useRef(0)
+
+  const projectilesRef =
+    useRef<
+      Projectile[]
+    >([])
+
+  const animationRef =
+    useRef<
+      number | null
+    >(null)
+
+  const lastFrameRef =
+    useRef<
+      number | null
+    >(null)
+
+  const waveActiveRef =
+    useRef(false)
+
+  const nextWaveAtRef =
+    useRef(0)
+
+  const wavesSurvivedRef =
+    useRef(0)
+
+  const progress =
+    targetStacks > 0
+      ? (
+          currentStacks /
+          targetStacks
+        ) * 100
+      : 0
+
+  useEffect(() => {
+    phaseRef.current =
+      phase
+  }, [phase])
+
+  /*
+  =========================================================
+  FEEDBACK
+  =========================================================
+  */
+
+  const showFeedback =
+    useCallback(
+      (
+        message: string,
+        damage:
+          number | null = null
+      ) => {
+        setFeedback(message)
+
+        setFeedbackDamage(
+          damage
+        )
+
+        window.setTimeout(
+          () => {
+            setFeedback(null)
+            setFeedbackDamage(null)
+          },
+          460
+        )
+      },
+      []
+    )
+
+  const triggerImpact =
+    useCallback(() => {
+      setImpactFlash(true)
+
+      window.setTimeout(
+        () => {
+          setImpactFlash(false)
+        },
+        150
+      )
+    }, [])
+
+  /*
+  =========================================================
+  DEFESA FÍSICA
+  =========================================================
+  */
+
+  const startPhysicalGuard =
+    useCallback(() => {
+      if (
+        phaseRef.current !==
+        'playing'
+      ) {
+        return
+      }
+
+      if (
+        magicDirectionRef.current
+      ) {
+        magicDirectionRef.current =
+          null
+
+        setMagicDirection(
+          null
+        )
+
+        regenBlockedUntilRef.current =
+          performance.now() +
+          MAGIC_REGEN_DELAY
+      }
+
+      physicalGuardRef.current =
+        true
+
+      setPhysicalGuard(true)
+    }, [])
+
+  const stopPhysicalGuard =
+    useCallback(() => {
+      physicalGuardRef.current =
+        false
+
+      setPhysicalGuard(false)
+    }, [])
+
+  /*
+  =========================================================
+  DEFESA MÁGICA
+  =========================================================
+  */
+
+  const startMagicGuard =
+    useCallback(
+      (
+        direction:
+          AttackDirection
+      ) => {
+        if (
+          phaseRef.current !==
+          'playing'
+        ) {
+          return
+        }
+
+        physicalGuardRef.current =
+          false
+
+        setPhysicalGuard(false)
+
+        magicDirectionRef.current =
+          direction
+
+        setMagicDirection(
+          direction
+        )
+      },
+      []
+    )
+
+  const stopMagicGuard =
+    useCallback(
+      (
+        direction?:
+          AttackDirection
+      ) => {
+        if (
+          direction &&
+          magicDirectionRef.current !==
+            direction
+        ) {
+          return
+        }
+
+        if (
+          magicDirectionRef.current
+        ) {
+          regenBlockedUntilRef.current =
+            performance.now() +
+            MAGIC_REGEN_DELAY
+        }
+
+        magicDirectionRef.current =
+          null
+
+        setMagicDirection(null)
+      },
+      []
+    )
+
+  /*
+  =========================================================
+  BARREIRA
+  =========================================================
+  */
+
+  const activateBarrier =
+    useCallback(() => {
+      if (
+        phaseRef.current !==
+        'playing'
+      ) {
+        return
+      }
+
+      if (
+        barrierActiveRef.current
+      ) {
+        return
+      }
+
+      if (
+        energyRef.current <
+        BARRIER_COST
+      ) {
+        showFeedback(
+          'ENERGIA INSUFICIENTE'
+        )
+
+        return
+      }
+
+      const now =
+        performance.now()
+
+      physicalGuardRef.current =
+        false
+
+      magicDirectionRef.current =
+        null
+
+      setPhysicalGuard(false)
+      setMagicDirection(null)
+
+      energyRef.current =
+        Math.max(
+          0,
+          energyRef.current -
+          BARRIER_COST
+        )
+
+      setEnergy(
+        energyRef.current
+      )
+
+      barrierActiveRef.current =
+        true
+
+      barrierUntilRef.current =
+        now +
+        BARRIER_DURATION
+
+      regenBlockedUntilRef.current =
+        now +
+        BARRIER_DURATION +
+        MAGIC_REGEN_DELAY
+
+      setBarrierActive(true)
+
+      showFeedback(
+        'BARREIRA!'
+      )
+    }, [showFeedback])
+
+  /*
+  =========================================================
+  RESET
+  =========================================================
+  */
+
+  const resetGame =
+    useCallback(() => {
+      resetProgress()
+
+      lifeRef.current =
+        MAX_LIFE
+
+      energyRef.current =
+        MAX_ENERGY
+
+      setLife(MAX_LIFE)
+      setEnergy(MAX_ENERGY)
+
+      physicalGuardRef.current =
+        false
+
+      magicDirectionRef.current =
+        null
+
+      barrierActiveRef.current =
+        false
+
+      setPhysicalGuard(false)
+      setMagicDirection(null)
+      setBarrierActive(false)
+
+      barrierUntilRef.current =
+        0
+
+      regenBlockedUntilRef.current =
+        0
+
+      projectileIdRef.current =
+        0
+
+      projectilesRef.current =
+        []
+
+      setProjectiles([])
+
+      waveActiveRef.current =
+        false
+
+      nextWaveAtRef.current =
+        0
+
+      wavesSurvivedRef.current =
+        0
+
+      setWaveNumber(0)
+
+      setLastAttack(null)
+
+      lastFrameRef.current =
+        null
+
+      setFeedback(null)
+
+      setFeedbackDamage(
+        null
+      )
+
+      setImpactFlash(false)
+    }, [resetProgress])
+
+  const startGame = () => {
+    resetGame()
+
+    setCountdown(3)
+
+    setPhase(
+      'countdown'
+    )
+  }
+
+  /*
+  =========================================================
+  CONTAGEM
+  =========================================================
+  */
+
+  useEffect(() => {
+    if (
+      phase !== 'countdown'
+    ) {
+      return
+    }
+
+    if (
+      countdown <= 0
+    ) {
+      const timer =
+        window.setTimeout(
+          () => {
+            setPhase(
+              'playing'
+            )
+
+            nextWaveAtRef.current =
+              performance.now() +
+              450
+          },
+          300
+        )
+
+      return () => {
+        window.clearTimeout(
+          timer
+        )
+      }
+    }
+
+    const timer =
+      window.setTimeout(
+        () => {
+          setCountdown(
+            (value) =>
+              value - 1
+          )
+        },
+        650
+      )
+
+    return () => {
+      window.clearTimeout(
+        timer
+      )
+    }
+  }, [
+    phase,
+    countdown,
+  ])
+
+  /*
+  =========================================================
+  PROJÉTEIS
+  =========================================================
+  */
+
+  const createProjectile =
+    useCallback(
+      (
+        direction:
+          AttackDirection,
+
+        wave: number
+      ): Projectile | null => {
+        const arena =
+          arenaRef.current
+
+        if (!arena) {
+          return null
+        }
+
+        const width =
+          arena.clientWidth
+
+        const height =
+          arena.clientHeight
+
+        const centerX =
+          width / 2
+
+        const centerY =
+          height / 2
+
+        const attack =
+          randomItem(
+            getAttackPool(
+              wave
+            )
+          )
+
+        const size =
+          getAttackSize(
+            wave
+          )
+
+        const scale =
+          getSizeScale(
+            size
+          )
+
+        const multiplier =
+          getSizeMultiplier(
+            size
+          )
+
+        const radius =
+          attack.radius *
+          scale
+
+        const damage =
+          Math.max(
+            1,
+            Math.round(
+              attack.damage *
+              multiplier
+            )
+          )
+
+        const guardDamage =
+          Math.max(
+            1,
+            Math.round(
+              attack.guardDamage *
+              multiplier
+            )
+          )
+
+        const margin =
+          radius + 45
+
+        let x =
+          centerX
+
+        let y =
+          centerY
+
+        if (
+          direction ===
+          'top'
+        ) {
+          x =
+            width *
+            (
+              0.18 +
+              Math.random() *
+              0.64
+            )
+
+          y =
+            -margin
+        }
+
+        if (
+          direction ===
+          'bottom'
+        ) {
+          x =
+            width *
+            (
+              0.18 +
+              Math.random() *
+              0.64
+            )
+
+          y =
+            height +
+            margin
+        }
+
+        if (
+          direction ===
+          'left'
+        ) {
+          x =
+            -margin
+
+          y =
+            height *
+            (
+              0.18 +
+              Math.random() *
+              0.64
+            )
+        }
+
+        if (
+          direction ===
+          'right'
+        ) {
+          x =
+            width +
+            margin
+
+          y =
+            height *
+            (
+              0.18 +
+              Math.random() *
+              0.64
+            )
+        }
+
+        const dx =
+          centerX - x
+
+        const dy =
+          centerY - y
+
+        const length =
+          Math.sqrt(
+            dx * dx +
+            dy * dy
+          ) || 1
+
+        projectileIdRef.current +=
+          1
+
+        return {
+          id:
+            projectileIdRef.current,
+
+          attack,
+          direction,
+          size,
+
+          x,
+          y,
+
+          vx:
+            (
+              dx /
+              length
+            ) *
+            attack.speed,
+
+          vy:
+            (
+              dy /
+              length
+            ) *
+            attack.speed,
+
+          radius,
+          damage,
+          guardDamage,
+        }
+      },
+      []
+    )
+
+  /*
+  =========================================================
+  ONDAS
+  =========================================================
+  */
+
+  const spawnWave =
+    useCallback(() => {
+      const wave =
+        wavesSurvivedRef.current +
+        1
+
+      setWaveNumber(
+        wave
+      )
+
+      const count =
+        getProjectileCount(
+          wave
+        )
+
+      const availableDirections =
+        [...DIRECTIONS]
+
+      const newProjectiles:
+        Projectile[] = []
+
+      for (
+        let index = 0;
+        index < count;
+        index += 1
+      ) {
+        let direction:
+          AttackDirection
+
+        if (
+          availableDirections.length >
+          0
+        ) {
+          const directionIndex =
+            Math.floor(
+              Math.random() *
+              availableDirections.length
+            )
+
+          direction =
+            availableDirections[
+              directionIndex
+            ]
+
+          availableDirections.splice(
+            directionIndex,
+            1
+          )
+        } else {
+          direction =
+            randomItem(
+              DIRECTIONS
+            )
+        }
+
+        const projectile =
+          createProjectile(
+            direction,
+            wave
+          )
+
+        if (projectile) {
+          newProjectiles.push(
+            projectile
+          )
+
+          setLastAttack(
+            projectile.attack
+          )
+        }
+      }
+
+      if (
+        newProjectiles.length ===
+        0
+      ) {
+        nextWaveAtRef.current =
+          performance.now() +
+          100
+
+        return
+      }
+
+      projectilesRef.current =
+        newProjectiles
+
+      setProjectiles(
+        newProjectiles
+      )
+
+      waveActiveRef.current =
+        true
+    }, [createProjectile])
+
+  /*
+  =========================================================
+  LOOP PRINCIPAL
+  =========================================================
+  */
+
+  useEffect(() => {
+    if (
+      phase !== 'playing'
+    ) {
+      if (
+        animationRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          animationRef.current
+        )
+      }
+
+      lastFrameRef.current =
+        null
+
+      return
+    }
+
+    const frame = (
+      time: number
+    ) => {
+      const arena =
+        arenaRef.current
+
+      if (
+        !arena ||
+        phaseRef.current !==
+          'playing'
+      ) {
+        return
+      }
+
+      if (
+        lastFrameRef.current ===
+        null
+      ) {
+        lastFrameRef.current =
+          time
+      }
+
+      const delta =
+        Math.min(
+          (
+            time -
+            lastFrameRef.current
+          ) / 1000,
+          0.05
+        )
+
+      lastFrameRef.current =
+        time
+
+      const width =
+        arena.clientWidth
+
+      const height =
+        arena.clientHeight
+
+      const centerX =
+        width / 2
+
+      const centerY =
+        height / 2
+
+      /*
+      BARREIRA ACABOU
+      */
+
+      if (
+        barrierActiveRef.current &&
+        time >=
+          barrierUntilRef.current
+      ) {
+        barrierActiveRef.current =
+          false
+
+        setBarrierActive(
+          false
+        )
+      }
+
+      /*
+      REGENERAÇÃO
+      */
+
+      const canRegenerate =
+        !magicDirectionRef.current &&
+        !barrierActiveRef.current &&
+        time >=
+          regenBlockedUntilRef.current
+
+      if (
+        canRegenerate &&
+        energyRef.current <
+          MAX_ENERGY
+      ) {
+        energyRef.current =
+          Math.min(
+            MAX_ENERGY,
+            energyRef.current +
+              ENERGY_REGEN *
+              delta
+          )
+
+        setEnergy(
+          energyRef.current
+        )
+      }
+
+      /*
+      NOVA ONDA
+      */
+
+      if (
+        !waveActiveRef.current &&
+        projectilesRef.current.length ===
+          0 &&
+        time >=
+          nextWaveAtRef.current
+      ) {
+        spawnWave()
+      }
+
+      /*
+      MOVIMENTO / COLISÕES
+      */
+
+      if (
+        projectilesRef.current.length >
+        0
+      ) {
+        const survivors:
+          Projectile[] = []
+
+        let playerDied =
+          false
+
+        for (
+          const projectile of
+          projectilesRef.current
+        ) {
+          const next = {
+            ...projectile,
+
+            x:
+              projectile.x +
+              projectile.vx *
+              delta,
+
+            y:
+              projectile.y +
+              projectile.vy *
+              delta,
+          }
+
+          const playerDistance =
+            distance(
+              next.x,
+              next.y,
+              centerX,
+              centerY
+            )
+
+          /*
+          BARREIRA
+          */
+
+          if (
+            barrierActiveRef.current &&
+            playerDistance <=
+              BARRIER_RADIUS +
+              next.radius
+          ) {
+            showFeedback(
+              'BLOQUEADO!'
+            )
+
+            continue
+          }
+
+          /*
+          DEFESA MÁGICA
+          */
+
+          if (
+            magicDirectionRef.current ===
+              projectile.direction &&
+            playerDistance <=
+              MAGIC_INTERCEPT_DISTANCE +
+              next.radius
+          ) {
+            if (
+              energyRef.current >=
+              MAGIC_BLOCK_COST
+            ) {
+              energyRef.current =
+                Math.max(
+                  0,
+                  energyRef.current -
+                    MAGIC_BLOCK_COST
+                )
+
+              setEnergy(
+                energyRef.current
+              )
+
+              regenBlockedUntilRef.current =
+                time +
+                MAGIC_REGEN_DELAY
+
+              showFeedback(
+                'DEFESA MÁGICA!'
+              )
+
+              continue
+            }
+
+            showFeedback(
+              'SEM ENERGIA!'
+            )
+          }
+
+          /*
+          PERSONAGEM
+          */
+
+          if (
+            playerDistance <=
+              PLAYER_RADIUS +
+              next.radius
+          ) {
+            const damage =
+              physicalGuardRef.current
+                ? projectile.guardDamage
+                : projectile.damage
+
+            lifeRef.current =
+              Math.max(
+                0,
+                lifeRef.current -
+                  damage
+              )
+
+            setLife(
+              lifeRef.current
+            )
+
+            triggerImpact()
+
+            if (
+              physicalGuardRef.current
+            ) {
+              showFeedback(
+                'DEFESA FÍSICA',
+                damage
+              )
+            } else {
+              showFeedback(
+                'ATINGIDO!',
+                damage
+              )
+            }
+
+            if (
+              lifeRef.current <= 0
+            ) {
+              playerDied =
+                true
+            }
+
+            continue
+          }
+
+          survivors.push(
+            next
+          )
+        }
+
+        if (
+          playerDied
+        ) {
+          projectilesRef.current =
+            []
+
+          setProjectiles([])
+
+          waveActiveRef.current =
+            false
+
+          setPhase(
+            'failed'
+          )
+
+          return
+        }
+
+        projectilesRef.current =
+          survivors
+
+        setProjectiles(
+          survivors
+        )
+
+        /*
+        ONDA SOBREVIVIDA
+        */
+
+        if (
+          waveActiveRef.current &&
+          survivors.length ===
+            0
+        ) {
+          waveActiveRef.current =
+            false
+
+          wavesSurvivedRef.current +=
+            1
+
+          addStack(1)
+
+          if (
+            wavesSurvivedRef.current >=
+            targetStacks
+          ) {
+            setPhase(
+              'complete'
+            )
+
+            return
+          }
+
+          nextWaveAtRef.current =
+            time +
+            WAVE_DELAY
+        }
+      }
+
+      animationRef.current =
+        requestAnimationFrame(
+          frame
+        )
+    }
+
+    animationRef.current =
+      requestAnimationFrame(
+        frame
+      )
+
+    return () => {
+      if (
+        animationRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          animationRef.current
+        )
+      }
+
+      lastFrameRef.current =
+        null
+    }
+  }, [
+    phase,
+    addStack,
+    showFeedback,
+    spawnWave,
+    targetStacks,
+    triggerImpact,
+  ])
+
+  /*
+  =========================================================
+  DESKTOP
+  =========================================================
+  */
+
+  useEffect(() => {
+    const directions:
+      Record<
+        string,
+        AttackDirection
+      > = {
+        KeyW: 'top',
+        KeyS: 'bottom',
+        KeyA: 'left',
+        KeyD: 'right',
+      }
+
+    const handleKeyDown = (
+      event: KeyboardEvent
+    ) => {
+      if (
+        event.code ===
+          'ShiftLeft' ||
+        event.code ===
+          'ShiftRight'
+      ) {
+        event.preventDefault()
+
+        startPhysicalGuard()
+
+        return
+      }
+
+      const direction =
+        directions[
+          event.code
+        ]
+
+      if (direction) {
+        event.preventDefault()
+
+        startMagicGuard(
+          direction
+        )
+
+        return
+      }
+
+      if (
+        event.code ===
+          'Space' &&
+        !event.repeat
+      ) {
+        event.preventDefault()
+
+        activateBarrier()
+      }
+    }
+
+    const handleKeyUp = (
+      event: KeyboardEvent
+    ) => {
+      if (
+        event.code ===
+          'ShiftLeft' ||
+        event.code ===
+          'ShiftRight'
+      ) {
+        event.preventDefault()
+
+        stopPhysicalGuard()
+
+        return
+      }
+
+      const direction =
+        directions[
+          event.code
+        ]
+
+      if (direction) {
+        event.preventDefault()
+
+        stopMagicGuard(
+          direction
+        )
+      }
+    }
+
+    const handleBlur = () => {
+      stopPhysicalGuard()
+      stopMagicGuard()
+    }
+
+    window.addEventListener(
+      'keydown',
+      handleKeyDown
+    )
+
+    window.addEventListener(
+      'keyup',
+      handleKeyUp
+    )
+
+    window.addEventListener(
+      'blur',
+      handleBlur
+    )
+
+    return () => {
+      window.removeEventListener(
+        'keydown',
+        handleKeyDown
+      )
+
+      window.removeEventListener(
+        'keyup',
+        handleKeyUp
+      )
+
+      window.removeEventListener(
+        'blur',
+        handleBlur
+      )
+    }
+  }, [
+    activateBarrier,
+    startMagicGuard,
+    startPhysicalGuard,
+    stopMagicGuard,
+    stopPhysicalGuard,
+  ])
+
+  const exitTraining = () => {
+    physicalGuardRef.current =
+      false
+
+    magicDirectionRef.current =
+      null
+
+    barrierActiveRef.current =
+      false
+
+    projectilesRef.current =
+      []
+
+    returnToMenu()
+  }
+
+  /*
+  =========================================================
+  ESCUDO MÁGICO VISUAL
+  =========================================================
+  */
+
+  const magicShieldStyle = () => {
+    if (
+      magicDirection ===
+      'left'
+    ) {
+      return {
+        left:
+          'calc(50% - 92px)',
+        top: '50%',
+        transform:
+          'translate(-50%, -50%)',
+      }
+    }
+
+    if (
+      magicDirection ===
+      'right'
+    ) {
+      return {
+        left:
+          'calc(50% + 92px)',
+        top: '50%',
+        transform:
+          'translate(-50%, -50%)',
+      }
+    }
+
+    if (
+      magicDirection ===
+      'top'
+    ) {
+      return {
+        left: '50%',
+        top:
+          'calc(50% - 92px)',
+        transform:
+          'translate(-50%, -50%) rotate(90deg)',
+      }
+    }
+
+    return {
+      left: '50%',
+      top:
+        'calc(50% + 92px)',
+      transform:
+        'translate(-50%, -50%) rotate(90deg)',
+    }
+  }
+
+  return (
+    <main
+      className="
+        min-h-[100dvh]
+        overflow-hidden
+        overscroll-none
+        select-none
+        bg-[#050706]
+        text-white
+      "
+    >
+
+      <div
+        className="
+          mx-auto
+          flex
+          h-[100dvh]
+          w-full
+          max-w-md
+          flex-col
+          px-3
+          pb-[max(10px,env(safe-area-inset-bottom))]
+          pt-[max(10px,env(safe-area-inset-top))]
+          sm:max-w-lg
+          lg:max-w-2xl
+        "
+      >
+
+        {/* =================================================
+            HUD SUPERIOR
+        ================================================= */}
+
+        <header
+          className="
+            shrink-0
+          "
+        >
+
+          <div
+            className="
+              flex
+              items-center
+              gap-3
+            "
+          >
+
+            <button
+              type="button"
+              onClick={
+                exitTraining
+              }
+
+              className="
+                flex
+                h-11
+                w-11
+                shrink-0
+                items-center
+                justify-center
+                rounded-2xl
+                border
+                border-white/10
+                bg-white/5
+                active:scale-95
+              "
+            >
+              <ArrowLeft
+                size={20}
+              />
+            </button>
+
+            <div
+              className="
+                min-w-0
+                flex-1
+              "
+            >
+
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-2
+                "
+              >
+
+                <Shield
+                  size={19}
+                  className="
+                    text-emerald-400
+                  "
+                />
+
+                <h1
+                  className="
+                    text-lg
+                    font-black
+                  "
+                >
+                  Vigor
+                </h1>
+
+              </div>
+
+              <p
+                className="
+                  text-[11px]
+                  text-white/35
+                "
+              >
+                Resistência Extrema
+              </p>
+
+            </div>
+
+            <div
+              className="
+                text-right
+              "
+            >
+
+              <p
+                className="
+                  text-[9px]
+                  font-black
+                  uppercase
+                  tracking-widest
+                  text-white/30
+                "
+              >
+                Ondas
+              </p>
+
+              <p
+                className="
+                  text-lg
+                  font-black
+                "
+              >
+                {currentStacks}
+
+                <span
+                  className="
+                    text-white/30
+                  "
+                >
+                  /{targetStacks}
+                </span>
+              </p>
+
+            </div>
+
+          </div>
+
+          <div
+            className="
+              mt-3
+              h-1.5
+              overflow-hidden
+              rounded-full
+              bg-white/10
+            "
+          >
+
+            <motion.div
+              className="
+                h-full
+                rounded-full
+                bg-emerald-400
+              "
+
+              animate={{
+                width:
+                  `${progress}%`,
+              }}
+            />
+
+          </div>
+
+        </header>
+
+        {/* =================================================
+            READY / COUNTDOWN
+        ================================================= */}
+
+        <section
+          className="
+            relative
+            flex
+            min-h-0
+            flex-1
+            flex-col
+            pt-3
+          "
+        >
+
+          <AnimatePresence
+            mode="wait"
+          >
+
+            {phase ===
+              'ready' && (
+              <motion.div
+                key="ready"
+
+                initial={{
+                  opacity: 0,
+                  y: 12,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                }}
+
+                exit={{
+                  opacity: 0,
+                }}
+
+                className="
+                  my-auto
+                  flex
+                  w-full
+                  flex-col
+                  items-center
+                  text-center
+                "
+              >
+
+                <div
+                  className="
+                    relative
+                    flex
+                    h-28
+                    w-28
+                    items-center
+                    justify-center
+                  "
+                >
+
+                  <div
+                    className="
+                      absolute
+                      inset-0
+                      rounded-full
+                      border
+                      border-emerald-400/20
+                      bg-emerald-400/5
+                    "
+                  />
+
+                  <div
+                    className="
+                      absolute
+                      inset-3
+                      rounded-full
+                      border
+                      border-emerald-400/30
+                    "
+                  />
+
+                  <Shield
+                    size={50}
+                    className="
+                      text-emerald-300
+                    "
+                  />
+
+                </div>
+
+                <h2
+                  className="
+                    mt-5
+                    text-3xl
+                    font-black
+                  "
+                >
+                  Resistência Extrema
+                </h2>
+
+                <p
+                  className="
+                    mt-3
+                    max-w-sm
+                    text-sm
+                    leading-6
+                    text-white/45
+                  "
+                >
+                  Sobreviva às 50 ondas
+                  escolhendo a defesa certa
+                  para cada situação.
+                </p>
+
+                <div
+                  className="
+                    mt-6
+                    grid
+                    w-full
+                    grid-cols-3
+                    gap-2
+                  "
+                >
+
+                  <div
+                    className="
+                      rounded-2xl
+                      border
+                      border-white/10
+                      bg-white/5
+                      p-3
+                    "
+                  >
+                    <Shield
+                      size={22}
+                      className="
+                        mx-auto
+                        text-stone-300
+                      "
+                    />
+
+                    <p
+                      className="
+                        mt-2
+                        text-[10px]
+                        font-black
+                      "
+                    >
+                      FÍSICA
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-[9px]
+                        text-white/35
+                      "
+                    >
+                      Reduz dano
+                    </p>
+                  </div>
+
+                  <div
+                    className="
+                      rounded-2xl
+                      border
+                      border-blue-400/20
+                      bg-blue-400/[0.06]
+                      p-3
+                    "
+                  >
+                    <Sparkles
+                      size={22}
+                      className="
+                        mx-auto
+                        text-blue-300
+                      "
+                    />
+
+                    <p
+                      className="
+                        mt-2
+                        text-[10px]
+                        font-black
+                      "
+                    >
+                      MÁGICA
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-[9px]
+                        text-white/35
+                      "
+                    >
+                      Direcional
+                    </p>
+                  </div>
+
+                  <div
+                    className="
+                      rounded-2xl
+                      border
+                      border-violet-400/20
+                      bg-violet-400/[0.06]
+                      p-3
+                    "
+                  >
+                    <Sparkles
+                      size={22}
+                      className="
+                        mx-auto
+                        text-violet-300
+                      "
+                    />
+
+                    <p
+                      className="
+                        mt-2
+                        text-[10px]
+                        font-black
+                      "
+                    >
+                      BARREIRA
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-[9px]
+                        text-white/35
+                      "
+                    >
+                      Proteção 360°
+                    </p>
+                  </div>
+
+                </div>
+
+                <div
+                  className="
+                    mt-4
+                    flex
+                    w-full
+                    items-center
+                    justify-between
+                    rounded-2xl
+                    border
+                    border-blue-400/10
+                    bg-blue-400/[0.04]
+                    px-4
+                    py-3
+                  "
+                >
+
+                  <span
+                    className="
+                      flex
+                      items-center
+                      gap-2
+                      text-xs
+                      font-black
+                      text-blue-200
+                    "
+                  >
+                    <Zap
+                      size={15}
+                    />
+                    Energia
+                  </span>
+
+                  <span
+                    className="
+                      text-xs
+                      font-black
+                    "
+                  >
+                    +5 por segundo
+                  </span>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    startGame
+                  }
+
+                  className="
+                    mt-5
+                    min-h-14
+                    w-full
+                    rounded-2xl
+                    bg-emerald-400
+                    px-6
+                    font-black
+                    text-black
+                    active:scale-[0.98]
+                  "
+                >
+                  Começar Treino
+                </button>
+
+              </motion.div>
+            )}
+
+            {phase ===
+              'countdown' && (
+              <motion.div
+                key={
+                  `countdown-${countdown}`
+                }
+
+                initial={{
+                  opacity: 0,
+                  scale: 0.55,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
+
+                exit={{
+                  opacity: 0,
+                  scale: 1.35,
+                }}
+
+                className="
+                  my-auto
+                  text-center
+                "
+              >
+
+                {countdown > 0 ? (
+                  <>
+                    <p
+                      className="
+                        text-xs
+                        font-black
+                        uppercase
+                        tracking-[0.3em]
+                        text-white/30
+                      "
+                    >
+                      Prepare-se
+                    </p>
+
+                    <p
+                      className="
+                        mt-3
+                        text-8xl
+                        font-black
+                      "
+                    >
+                      {countdown}
+                    </p>
+                  </>
+                ) : (
+                  <p
+                    className="
+                      text-5xl
+                      font-black
+                      text-emerald-300
+                    "
+                  >
+                    RESISTA!
+                  </p>
+                )}
+
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+
+          {/* =================================================
+              JOGO
+          ================================================= */}
+
+          {phase ===
+            'playing' && (
+            <div
+              className="
+                flex
+                min-h-0
+                flex-1
+                flex-col
+              "
+            >
+
+              {/* STATUS */}
+
+              <div
+                className="
+                  mb-2
+                  grid
+                  shrink-0
+                  grid-cols-2
+                  gap-2
+                "
+              >
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-red-400/10
+                    bg-red-950/20
+                    p-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      justify-between
+                    "
+                  >
+
+                    <span
+                      className="
+                        flex
+                        items-center
+                        gap-1.5
+                        text-[10px]
+                        font-black
+                        text-red-300
+                      "
+                    >
+                      <Heart
+                        size={13}
+                      />
+                      VIDA
+                    </span>
+
+                    <span
+                      className="
+                        text-xs
+                        font-black
+                      "
+                    >
+                      {Math.ceil(life)}
+                    </span>
+
+                  </div>
+
+                  <div
+                    className="
+                      mt-2
+                      h-2.5
+                      overflow-hidden
+                      rounded-full
+                      bg-white/10
+                    "
+                  >
+                    <motion.div
+                      className="
+                        h-full
+                        rounded-full
+                        bg-red-400
+                      "
+
+                      animate={{
+                        width:
+                          `${life}%`,
+                      }}
+                    />
+                  </div>
+
+                </div>
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-blue-400/10
+                    bg-blue-950/20
+                    p-3
+                  "
+                >
+
+                  <div
+                    className="
+                      flex
+                      items-center
+                      justify-between
+                    "
+                  >
+
+                    <span
+                      className="
+                        flex
+                        items-center
+                        gap-1.5
+                        text-[10px]
+                        font-black
+                        text-blue-300
+                      "
+                    >
+                      <Zap
+                        size={13}
+                      />
+                      ENERGIA
+                    </span>
+
+                    <span
+                      className="
+                        text-xs
+                        font-black
+                      "
+                    >
+                      {Math.floor(energy)}
+                    </span>
+
+                  </div>
+
+                  <div
+                    className="
+                      mt-2
+                      h-2.5
+                      overflow-hidden
+                      rounded-full
+                      bg-white/10
+                    "
+                  >
+                    <motion.div
+                      className="
+                        h-full
+                        rounded-full
+                        bg-blue-400
+                      "
+
+                      animate={{
+                        width:
+                          `${energy}%`,
+                      }}
+                    />
+                  </div>
+
+                </div>
+
+              </div>
+
+              {/* ARENA */}
+
+              <motion.div
+                ref={arenaRef}
+
+                animate={
+                  impactFlash
+                    ? {
+                        x: [
+                          0,
+                          -4,
+                          4,
+                          -3,
+                          3,
+                          0,
+                        ],
+                      }
+                    : {
+                        x: 0,
+                      }
+                }
+
+                className="
+                  relative
+                  min-h-[320px]
+                  flex-1
+                  overflow-hidden
+                  rounded-[28px]
+                  border
+                  border-emerald-400/10
+                  bg-[#08100d]
+                  shadow-[inset_0_0_60px_rgba(16,185,129,.04)]
+                "
+              >
+
+                {/* FUNDO DA ARENA */}
+
+                <div
+                  className="
+                    pointer-events-none
+                    absolute
+                    inset-0
+                  "
+                >
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-1/2
+                      h-[310px]
+                      w-[310px]
+                      -translate-x-1/2
+                      -translate-y-1/2
+                      rounded-full
+                      border
+                      border-emerald-300/[0.04]
+                    "
+                  />
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-1/2
+                      h-[220px]
+                      w-[220px]
+                      -translate-x-1/2
+                      -translate-y-1/2
+                      rounded-full
+                      border
+                      border-emerald-300/[0.05]
+                    "
+                  />
+
+                  <div
+                    className="
+                      absolute
+                      bottom-[21%]
+                      left-1/2
+                      h-8
+                      w-40
+                      -translate-x-1/2
+                      rounded-full
+                      bg-black/50
+                      blur-xl
+                    "
+                  />
+
+                </div>
+
+                {/* ONDA */}
+
+                <div
+                  className="
+                    absolute
+                    left-3
+                    top-3
+                    z-40
+                    rounded-full
+                    border
+                    border-white/10
+                    bg-black/45
+                    px-3
+                    py-1.5
+                    text-[10px]
+                    font-black
+                    backdrop-blur
+                  "
+                >
+                  ONDA {waveNumber}
+                </div>
+
+                {lastAttack && (
+                  <div
+                    className="
+                      absolute
+                      right-3
+                      top-3
+                      z-40
+                      rounded-full
+                      border
+                      border-white/10
+                      bg-black/45
+                      px-3
+                      py-1.5
+                      text-[10px]
+                      font-black
+                      text-white/55
+                      backdrop-blur
+                    "
+                  >
+                    {lastAttack.symbol}
+                    {' '}
+                    {lastAttack.name}
+                  </div>
+                )}
+
+                {/* PROJÉTEIS */}
+
+                {projectiles.map(
+                  (projectile) => {
+                    const projectileSize =
+                      projectile.radius *
+                      2
+
+                    const trailLength =
+                      Math.max(
+                        18,
+                        projectile.radius *
+                        2.8
+                      )
+
+                    return (
+                      <div
+                        key={
+                          projectile.id
+                        }
+
+                        className="
+                          pointer-events-none
+                          absolute
+                          z-20
+                        "
+
+                        style={{
+                          left:
+                            projectile.x,
+
+                          top:
+                            projectile.y,
+
+                          transform:
+                            'translate(-50%, -50%)',
+                        }}
+                      >
+
+                        {/* TRAIL */}
+
+                        <div
+                          className="
+                            absolute
+                            left-1/2
+                            top-1/2
+                            -z-10
+                            rounded-full
+                            blur-sm
+                          "
+
+                          style={{
+                            width:
+                              trailLength,
+
+                            height:
+                              Math.max(
+                                4,
+                                projectile.radius *
+                                0.7
+                              ),
+
+                            background:
+                              projectile.attack
+                                .glow,
+
+                            opacity:
+                              0.45,
+
+                            transform:
+                              projectile.direction ===
+                              'left'
+                                ? 'translate(-10%, -50%)'
+                                : projectile.direction ===
+                                    'right'
+                                  ? 'translate(-90%, -50%)'
+                                  : projectile.direction ===
+                                      'top'
+                                    ? 'translate(-50%, -10%) rotate(90deg)'
+                                    : 'translate(-50%, -90%) rotate(90deg)',
+                          }}
+                        />
+
+                        {/* CORPO */}
+
+                        <div
+                          className="
+                            flex
+                            items-center
+                            justify-center
+                            rounded-full
+                            border
+                            border-white/30
+                            font-black
+                          "
+
+                          style={{
+                            width:
+                              projectileSize,
+
+                            height:
+                              projectileSize,
+
+                            background:
+                              projectile.attack
+                                .background,
+
+                            boxShadow:
+                              `0 0 ${
+                                16 +
+                                projectile.radius
+                              }px ${
+                                projectile.attack
+                                  .glow
+                              }`,
+
+                            fontSize:
+                              Math.max(
+                                12,
+                                projectile.radius
+                              ),
+                          }}
+                        >
+                          {
+                            projectile
+                              .attack
+                              .symbol
+                          }
+                        </div>
+
+                      </div>
+                    )
+                  }
+                )}
+
+                {/* BARREIRA */}
+
+                <AnimatePresence>
+
+                  {barrierActive && (
+                    <motion.div
+                      initial={{
+                        opacity: 0,
+                        scale: 0.5,
+                      }}
+
+                      animate={{
+                        opacity: 1,
+                        scale: [
+                          0.95,
+                          1.03,
+                          1,
+                        ],
+                      }}
+
+                      exit={{
+                        opacity: 0,
+                        scale: 1.18,
+                      }}
+
+                      className="
+                        pointer-events-none
+                        absolute
+                        left-1/2
+                        top-1/2
+                        z-30
+                        h-[224px]
+                        w-[224px]
+                        -translate-x-1/2
+                        -translate-y-1/2
+                        rounded-full
+                        border-[3px]
+                        border-violet-200/80
+                        bg-violet-400/10
+                        shadow-[0_0_55px_rgba(196,181,253,.5),inset_0_0_45px_rgba(196,181,253,.25)]
+                      "
+                    >
+
+                      <motion.div
+                        animate={{
+                          rotate: 360,
+                        }}
+
+                        transition={{
+                          duration: 4,
+                          repeat:
+                            Infinity,
+                          ease: 'linear',
+                        }}
+
+                        className="
+                          absolute
+                          inset-3
+                          rounded-full
+                          border
+                          border-dashed
+                          border-violet-200/30
+                        "
+                      />
+
+                    </motion.div>
+                  )}
+
+                </AnimatePresence>
+
+                {/* ESCUDO MÁGICO */}
+
+                <AnimatePresence>
+
+                  {magicDirection &&
+                    !barrierActive && (
+                    <motion.div
+                      key={
+                        magicDirection
+                      }
+
+                      initial={{
+                        opacity: 0,
+                        scale: 0.6,
+                      }}
+
+                      animate={{
+                        opacity: 1,
+                        scale: 1,
+                      }}
+
+                      exit={{
+                        opacity: 0,
+                        scale: 0.8,
+                      }}
+
+                      className="
+                        pointer-events-none
+                        absolute
+                        z-35
+                        h-28
+                        w-10
+                        overflow-hidden
+                        rounded-full
+                        border-2
+                        border-blue-100
+                        bg-blue-400/25
+                        shadow-[0_0_35px_rgba(96,165,250,.9),inset_0_0_20px_rgba(191,219,254,.35)]
+                      "
+
+                      style={
+                        magicShieldStyle()
+                      }
+                    >
+
+                      <motion.div
+                        animate={{
+                          y: [
+                            '-100%',
+                            '120%',
+                          ],
+                        }}
+
+                        transition={{
+                          duration:
+                            0.8,
+                          repeat:
+                            Infinity,
+                          ease: 'linear',
+                        }}
+
+                        className="
+                          absolute
+                          left-0
+                          right-0
+                          h-8
+                          bg-gradient-to-b
+                          from-transparent
+                          via-white/35
+                          to-transparent
+                        "
+                      />
+
+                    </motion.div>
+                  )}
+
+                </AnimatePresence>
+
+                {/* PERSONAGEM GRANDE */}
+
+                <motion.div
+                  className="
+                    pointer-events-none
+                    absolute
+                    left-1/2
+                    top-1/2
+                    z-40
+                    h-[150px]
+                    w-[110px]
+                    -translate-x-1/2
+                    -translate-y-1/2
+                  "
+
+                  animate={{
+                    scale:
+                      physicalGuard
+                        ? 0.94
+                        : 1,
+
+                    y:
+                      physicalGuard
+                        ? 8
+                        : 0,
+
+                    rotate:
+                      impactFlash
+                        ? [
+                            0,
+                            -5,
+                            5,
+                            -3,
+                            0,
+                          ]
+                        : 0,
+                  }}
+                >
+
+                  {/* AURA */}
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-1/2
+                      h-32
+                      w-24
+                      -translate-x-1/2
+                      -translate-y-1/2
+                      rounded-full
+                      bg-emerald-400/[0.04]
+                      blur-xl
+                    "
+                  />
+
+                  {/* CABEÇA */}
+
+                  <div
+                    className="
+                      absolute
+                      left-1/2
+                      top-2
+                      h-11
+                      w-11
+                      -translate-x-1/2
+                      rounded-full
+                      border-2
+                      border-stone-300/30
+                      bg-stone-300
+                      shadow-lg
+                    "
+                  >
+
+                    <div
+                      className="
+                        absolute
+                        left-1/2
+                        top-[-5px]
+                        h-5
+                        w-12
+                        -translate-x-1/2
+                        rounded-t-full
+                        bg-neutral-900
+                      "
+                    />
+
+                  </div>
+
+                  {/* CORPO */}
+
+                  <motion.div
+                    className="
+                      absolute
+                      bottom-3
+                      left-1/2
+                      flex
+                      h-[98px]
+                      w-[78px]
+                      -translate-x-1/2
+                      items-center
+                      justify-center
+                      rounded-[28px]
+                      border-2
+                      border-emerald-400/25
+                      bg-gradient-to-b
+                      from-neutral-700
+                      to-neutral-950
+                      shadow-[0_14px_30px_rgba(0,0,0,.5)]
+                    "
+                  >
+
+                    {/* OMBREIRAS */}
+
+                    <div
+                      className="
+                        absolute
+                        left-[-10px]
+                        top-5
+                        h-7
+                        w-7
+                        rounded-full
+                        bg-neutral-800
+                      "
+                    />
+
+                    <div
+                      className="
+                        absolute
+                        right-[-10px]
+                        top-5
+                        h-7
+                        w-7
+                        rounded-full
+                        bg-neutral-800
+                      "
+                    />
+
+                    {/* PEITO */}
+
+                    <Shield
+                      size={32}
+                      className={
+                        physicalGuard
+                          ? 'text-stone-100'
+                          : 'text-emerald-300/70'
+                      }
+                    />
+
+                    {/* DEFESA FÍSICA */}
+
+                    <AnimatePresence>
+
+                      {physicalGuard && (
+                        <motion.div
+                          initial={{
+                            opacity:
+                              0,
+                            scale:
+                              0.7,
+                          }}
+
+                          animate={{
+                            opacity:
+                              1,
+                            scale:
+                              1,
+                          }}
+
+                          exit={{
+                            opacity:
+                              0,
+                          }}
+
+                          className="
+                            absolute
+                            -inset-4
+                            rounded-[34px]
+                            border-2
+                            border-stone-200/40
+                            bg-stone-200/[0.05]
+                            shadow-[0_0_25px_rgba(231,229,228,.12)]
+                          "
+                        />
+                      )}
+
+                    </AnimatePresence>
+
+                  </motion.div>
+
+                  {/* SOMBRA */}
+
+                  <div
+                    className="
+                      absolute
+                      bottom-0
+                      left-1/2
+                      h-4
+                      w-24
+                      -translate-x-1/2
+                      rounded-full
+                      bg-black/60
+                      blur-md
+                    "
+                  />
+
+                </motion.div>
+
+                {/* FLASH DE IMPACTO */}
+
+                <AnimatePresence>
+
+                  {impactFlash && (
+                    <motion.div
+                      initial={{
+                        opacity:
+                          0.8,
+                      }}
+
+                      animate={{
+                        opacity:
+                          0,
+                      }}
+
+                      exit={{
+                        opacity:
+                          0,
+                      }}
+
+                      className="
+                        pointer-events-none
+                        absolute
+                        inset-0
+                        z-50
+                        bg-red-500/10
+                      "
+                    />
+                  )}
+
+                </AnimatePresence>
+
+                {/* FEEDBACK */}
+
+                <AnimatePresence>
+
+                  {feedback && (
+                    <motion.div
+                      initial={{
+                        opacity: 0,
+                        y: 12,
+                        scale: 0.8,
+                      }}
+
+                      animate={{
+                        opacity: 1,
+                        y: 0,
+                        scale: 1,
+                      }}
+
+                      exit={{
+                        opacity: 0,
+                        y: -8,
+                      }}
+
+                      className="
+                        pointer-events-none
+                        absolute
+                        bottom-5
+                        left-1/2
+                        z-[60]
+                        -translate-x-1/2
+                        whitespace-nowrap
+                        rounded-full
+                        border
+                        border-white/10
+                        bg-black/75
+                        px-5
+                        py-2
+                        text-center
+                        backdrop-blur-xl
+                      "
+                    >
+
+                      <p
+                        className="
+                          text-xs
+                          font-black
+                        "
+                      >
+                        {feedback}
+                      </p>
+
+                      {feedbackDamage !==
+                        null && (
+                        <p
+                          className="
+                            mt-0.5
+                            text-[10px]
+                            font-black
+                            text-red-300
+                          "
+                        >
+                          -{feedbackDamage}
+                          {' '}
+                          Vida
+                        </p>
+                      )}
+
+                    </motion.div>
+                  )}
+
+                </AnimatePresence>
+
+              </motion.div>
+
+              {/* =================================================
+                  MOBILE CONTROLS
+              ================================================= */}
+
+              <div
+                className="
+                  mt-2
+                  shrink-0
+                  md:hidden
+                "
+              >
+
+                <div
+                  className="
+                    mb-2
+                    flex
+                    items-center
+                    justify-between
+                    px-1
+                  "
+                >
+
+                  <p
+                    className="
+                      text-[9px]
+                      font-black
+                      uppercase
+                      tracking-[0.16em]
+                      text-blue-300/60
+                    "
+                  >
+                    Defesa Mágica
+                  </p>
+
+                  <p
+                    className="
+                      text-[9px]
+                      font-bold
+                      text-white/25
+                    "
+                  >
+                    8 Energia por bloqueio
+                  </p>
+
+                </div>
+
+                {/* D-PAD */}
+
+                <div
+                  className="
+                    mx-auto
+                    grid
+                    w-full
+                    max-w-[290px]
+                    grid-cols-3
+                    grid-rows-2
+                    gap-2
+                  "
+                >
+
+                  <div />
+
+                  <button
+                    type="button"
+
+                    onPointerDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      event.currentTarget
+                        .setPointerCapture(
+                          event.pointerId
+                        )
+
+                      startMagicGuard(
+                        'top'
+                      )
+                    }}
+
+                    onPointerUp={() =>
+                      stopMagicGuard(
+                        'top'
+                      )
+                    }
+
+                    onPointerCancel={() =>
+                      stopMagicGuard(
+                        'top'
+                      )
+                    }
+
+                    className={`
+                      flex
+                      min-h-[58px]
+                      touch-none
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      active:scale-95
+
+                      ${
+                        magicDirection ===
+                        'top'
+                          ? 'border-blue-200/70 bg-blue-400/30 text-blue-100 shadow-[0_0_20px_rgba(96,165,250,.2)]'
+                          : 'border-blue-400/15 bg-blue-400/[0.07] text-blue-300'
+                      }
+                    `}
+                  >
+                    <ArrowUp
+                      size={30}
+                    />
+                  </button>
+
+                  <div />
+
+                  <button
+                    type="button"
+
+                    onPointerDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      event.currentTarget
+                        .setPointerCapture(
+                          event.pointerId
+                        )
+
+                      startMagicGuard(
+                        'left'
+                      )
+                    }}
+
+                    onPointerUp={() =>
+                      stopMagicGuard(
+                        'left'
+                      )
+                    }
+
+                    onPointerCancel={() =>
+                      stopMagicGuard(
+                        'left'
+                      )
+                    }
+
+                    className={`
+                      flex
+                      min-h-[58px]
+                      touch-none
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      active:scale-95
+
+                      ${
+                        magicDirection ===
+                        'left'
+                          ? 'border-blue-200/70 bg-blue-400/30 text-blue-100'
+                          : 'border-blue-400/15 bg-blue-400/[0.07] text-blue-300'
+                      }
+                    `}
+                  >
+                    <ArrowLeft
+                      size={30}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+
+                    onPointerDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      event.currentTarget
+                        .setPointerCapture(
+                          event.pointerId
+                        )
+
+                      startMagicGuard(
+                        'bottom'
+                      )
+                    }}
+
+                    onPointerUp={() =>
+                      stopMagicGuard(
+                        'bottom'
+                      )
+                    }
+
+                    onPointerCancel={() =>
+                      stopMagicGuard(
+                        'bottom'
+                      )
+                    }
+
+                    className={`
+                      flex
+                      min-h-[58px]
+                      touch-none
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      active:scale-95
+
+                      ${
+                        magicDirection ===
+                        'bottom'
+                          ? 'border-blue-200/70 bg-blue-400/30 text-blue-100'
+                          : 'border-blue-400/15 bg-blue-400/[0.07] text-blue-300'
+                      }
+                    `}
+                  >
+                    <ArrowDown
+                      size={30}
+                    />
+                  </button>
+
+                  <button
+                    type="button"
+
+                    onPointerDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      event.currentTarget
+                        .setPointerCapture(
+                          event.pointerId
+                        )
+
+                      startMagicGuard(
+                        'right'
+                      )
+                    }}
+
+                    onPointerUp={() =>
+                      stopMagicGuard(
+                        'right'
+                      )
+                    }
+
+                    onPointerCancel={() =>
+                      stopMagicGuard(
+                        'right'
+                      )
+                    }
+
+                    className={`
+                      flex
+                      min-h-[58px]
+                      touch-none
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      active:scale-95
+
+                      ${
+                        magicDirection ===
+                        'right'
+                          ? 'border-blue-200/70 bg-blue-400/30 text-blue-100'
+                          : 'border-blue-400/15 bg-blue-400/[0.07] text-blue-300'
+                      }
+                    `}
+                  >
+                    <ArrowRight
+                      size={30}
+                    />
+                  </button>
+
+                </div>
+
+                {/* AÇÕES PRINCIPAIS */}
+
+                <div
+                  className="
+                    mt-2
+                    grid
+                    grid-cols-2
+                    gap-2
+                  "
+                >
+
+                  <button
+                    type="button"
+
+                    onPointerDown={(
+                      event
+                    ) => {
+                      event.preventDefault()
+
+                      event.currentTarget
+                        .setPointerCapture(
+                          event.pointerId
+                        )
+
+                      startPhysicalGuard()
+                    }}
+
+                    onPointerUp={
+                      stopPhysicalGuard
+                    }
+
+                    onPointerCancel={
+                      stopPhysicalGuard
+                    }
+
+                    className={`
+                      flex
+                      min-h-[68px]
+                      touch-none
+                      flex-col
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      active:scale-[0.97]
+
+                      ${
+                        physicalGuard
+                          ? 'border-stone-200/50 bg-stone-200/20 text-white'
+                          : 'border-white/10 bg-white/5 text-white'
+                      }
+                    `}
+                  >
+
+                    <Shield
+                      size={24}
+                    />
+
+                    <span
+                      className="
+                        mt-1
+                        text-[10px]
+                        font-black
+                      "
+                    >
+                      BLOQUEAR
+                    </span>
+
+                    <span
+                      className="
+                        text-[9px]
+                        text-white/35
+                      "
+                    >
+                      Defesa Física
+                    </span>
+
+                  </button>
+
+                  <button
+                    type="button"
+
+                    disabled={
+                      energy <
+                      BARRIER_COST
+                    }
+
+                    onClick={
+                      activateBarrier
+                    }
+
+                    className="
+                      flex
+                      min-h-[68px]
+                      flex-col
+                      items-center
+                      justify-center
+                      rounded-2xl
+                      border
+                      border-violet-400/25
+                      bg-violet-400/10
+                      text-violet-200
+                      active:scale-[0.97]
+                      disabled:opacity-30
+                    "
+                  >
+
+                    <Sparkles
+                      size={24}
+                    />
+
+                    <span
+                      className="
+                        mt-1
+                        text-[10px]
+                        font-black
+                      "
+                    >
+                      BARREIRA
+                    </span>
+
+                    <span
+                      className="
+                        text-[9px]
+                        text-white/35
+                      "
+                    >
+                      25 Energia
+                    </span>
+
+                  </button>
+
+                </div>
+
+              </div>
+
+              {/* DESKTOP */}
+
+              <div
+                className="
+                  mt-3
+                  hidden
+                  shrink-0
+                  grid-cols-3
+                  gap-3
+                  md:grid
+                "
+              >
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-white/5
+                    p-3
+                    text-center
+                  "
+                >
+
+                  <kbd
+                    className="
+                      text-lg
+                      font-black
+                    "
+                  >
+                    SHIFT
+                  </kbd>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[10px]
+                      text-white/35
+                    "
+                  >
+                    Defesa Física
+                  </p>
+
+                </div>
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-blue-400/15
+                    bg-blue-400/[0.05]
+                    p-3
+                    text-center
+                  "
+                >
+
+                  <kbd
+                    className="
+                      text-lg
+                      font-black
+                      text-blue-200
+                    "
+                  >
+                    WASD
+                  </kbd>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[10px]
+                      text-white/35
+                    "
+                  >
+                    Defesa Mágica
+                  </p>
+
+                </div>
+
+                <div
+                  className="
+                    rounded-2xl
+                    border
+                    border-violet-400/15
+                    bg-violet-400/[0.05]
+                    p-3
+                    text-center
+                  "
+                >
+
+                  <kbd
+                    className="
+                      text-lg
+                      font-black
+                      text-violet-200
+                    "
+                  >
+                    ESPAÇO
+                  </kbd>
+
+                  <p
+                    className="
+                      mt-1
+                      text-[10px]
+                      text-white/35
+                    "
+                  >
+                    Barreira
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* =================================================
+              VITÓRIA
+          ================================================= */}
+
+          <AnimatePresence>
+
+            {phase ===
+              'complete' && (
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  scale: 0.9,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
+
+                className="
+                  absolute
+                  inset-0
+                  z-[80]
+                  flex
+                  flex-col
+                  items-center
+                  justify-center
+                  bg-[#050706]
+                  text-center
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-24
+                    w-24
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-emerald-400
+                    text-emerald-950
+                  "
+                >
+                  <Trophy
+                    size={44}
+                  />
+                </div>
+
+                <p
+                  className="
+                    mt-6
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.3em]
+                    text-emerald-300
+                  "
+                >
+                  Treino concluído
+                </p>
+
+                <h2
+                  className="
+                    mt-2
+                    text-3xl
+                    font-black
+                  "
+                >
+                  Você resistiu!
+                </h2>
+
+                <p
+                  className="
+                    mt-3
+                    text-sm
+                    text-white/45
+                  "
+                >
+                  50 ondas sobrevividas.
+                </p>
+
+                <div
+                  className="
+                    mt-6
+                    grid
+                    w-full
+                    grid-cols-2
+                    gap-3
+                  "
+                >
+
+                  <div
+                    className="
+                      rounded-2xl
+                      border
+                      border-red-400/10
+                      bg-red-400/5
+                      p-4
+                    "
+                  >
+                    <p
+                      className="
+                        text-[9px]
+                        font-black
+                        text-white/30
+                      "
+                    >
+                      VIDA
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-2xl
+                        font-black
+                      "
+                    >
+                      {Math.ceil(life)}
+                    </p>
+                  </div>
+
+                  <div
+                    className="
+                      rounded-2xl
+                      border
+                      border-blue-400/10
+                      bg-blue-400/5
+                      p-4
+                    "
+                  >
+                    <p
+                      className="
+                        text-[9px]
+                        font-black
+                        text-white/30
+                      "
+                    >
+                      ENERGIA
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        text-2xl
+                        font-black
+                      "
+                    >
+                      {Math.floor(energy)}
+                    </p>
+                  </div>
+
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    startGame
+                  }
+
+                  className="
+                    mt-7
+                    flex
+                    min-h-14
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-2xl
+                    bg-emerald-400
+                    font-black
+                    text-black
+                  "
+                >
+                  <RotateCcw
+                    size={18}
+                  />
+
+                  Treinar Novamente
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    exitTraining
+                  }
+
+                  className="
+                    mt-3
+                    min-h-14
+                    w-full
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-white/5
+                    font-black
+                  "
+                >
+                  Voltar aos Treinos
+                </button>
+
+              </motion.div>
+            )}
+
+            {/* DERROTA */}
+
+            {phase ===
+              'failed' && (
+              <motion.div
+                initial={{
+                  opacity: 0,
+                  scale: 0.9,
+                }}
+
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
+
+                className="
+                  absolute
+                  inset-0
+                  z-[80]
+                  flex
+                  flex-col
+                  items-center
+                  justify-center
+                  bg-[#050706]
+                  text-center
+                "
+              >
+
+                <div
+                  className="
+                    flex
+                    h-24
+                    w-24
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-red-500/15
+                    text-5xl
+                  "
+                >
+                  💀
+                </div>
+
+                <p
+                  className="
+                    mt-6
+                    text-xs
+                    font-black
+                    uppercase
+                    tracking-[0.3em]
+                    text-red-400
+                  "
+                >
+                  Vida esgotada
+                </p>
+
+                <h2
+                  className="
+                    mt-2
+                    text-3xl
+                    font-black
+                  "
+                >
+                  Treino falhou
+                </h2>
+
+                <p
+                  className="
+                    mt-3
+                    text-sm
+                    text-white/45
+                  "
+                >
+                  Você chegou à onda
+                  {' '}
+                  <strong className="text-white">
+                    {currentStacks}
+                  </strong>
+                  .
+                </p>
+
+                <button
+                  type="button"
+                  onClick={
+                    startGame
+                  }
+
+                  className="
+                    mt-7
+                    flex
+                    min-h-14
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-2xl
+                    bg-emerald-400
+                    font-black
+                    text-black
+                  "
+                >
+                  <RotateCcw
+                    size={18}
+                  />
+
+                  Tentar Novamente
+                </button>
+
+                <button
+                  type="button"
+                  onClick={
+                    exitTraining
+                  }
+
+                  className="
+                    mt-3
+                    min-h-14
+                    w-full
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-white/5
+                    font-black
+                  "
+                >
+                  Voltar aos Treinos
+                </button>
+
+              </motion.div>
+            )}
+
+          </AnimatePresence>
+
+        </section>
+
+      </div>
+
+    </main>
+  )
+}

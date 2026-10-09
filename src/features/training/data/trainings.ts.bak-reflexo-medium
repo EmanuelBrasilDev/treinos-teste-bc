@@ -19,7 +19,7 @@ export const trainings: TrainingDefinition[] = [
     description:
       'Desvie continuamente dos projéteis usando movimentação manual.',
     stacks: 200,
-    difficulty: 'medio',
+    difficulty: 'dificil',
   },
   {
     id: 'vigor',
