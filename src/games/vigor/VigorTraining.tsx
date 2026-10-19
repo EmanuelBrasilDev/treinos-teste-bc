@@ -1801,8 +1801,7 @@ export function VigorTraining() {
         left:
           'calc(50% - 112px)',
         top: '50%',
-        transform:
-          'translate(-50%, -50%)',
+        translate: '-50% -50%',
       }
     }
 
@@ -1814,8 +1813,7 @@ export function VigorTraining() {
         left:
           'calc(50% + 112px)',
         top: '50%',
-        transform:
-          'translate(-50%, -50%)',
+        translate: '-50% -50%',
       }
     }
 
@@ -1827,8 +1825,7 @@ export function VigorTraining() {
         left: '50%',
         top:
           'calc(50% - 105px)',
-        transform:
-          'translate(-50%, -50%)',
+        translate: '-50% -50%',
       }
     }
 
@@ -1836,8 +1833,7 @@ export function VigorTraining() {
       left: '50%',
       top:
         'calc(50% + 105px)',
-      transform:
-        'translate(-50%, -50%)',
+      translate: '-50% -50%',
     }
   }
 
