@@ -1844,7 +1844,7 @@ export function VigorTraining() {
   return (
     <main
       className="
-        min-h-[100dvh]
+        game-shell game-vigor min-h-[100dvh]
         overflow-hidden
         overscroll-none
         select-none
@@ -1875,7 +1875,7 @@ export function VigorTraining() {
 
         <header
           className="
-            shrink-0
+            game-hud shrink-0
           "
         >
 
@@ -2028,7 +2028,7 @@ export function VigorTraining() {
 
         <section
           className="
-            relative
+            game-stage relative
             flex
             min-h-0
             flex-1
@@ -2589,7 +2589,7 @@ export function VigorTraining() {
                 }
 
                 className="
-                  relative
+                  vigor-arena relative
                   min-h-[320px]
                   flex-1
                   overflow-hidden
@@ -2725,11 +2725,13 @@ export function VigorTraining() {
                           projectile.id
                         }
 
-                        className="
+                        className={`
+                          vigor-projectile
+                          vigor-projectile-${projectile.attack.type}
                           pointer-events-none
                           absolute
                           z-20
-                        "
+                        `}
 
                         style={{
                           left:
@@ -2791,7 +2793,7 @@ export function VigorTraining() {
 
                         <div
                           className="
-                            flex
+                            vigor-projectile-body flex
                             items-center
                             justify-center
                             rounded-full
@@ -2873,7 +2875,7 @@ export function VigorTraining() {
                       }}
 
                       className="
-                        pointer-events-none
+                        vigor-barrier pointer-events-none
                         absolute
                         left-1/2
                         top-1/2
@@ -3088,7 +3090,7 @@ export function VigorTraining() {
                       }}
 
                       className="
-                        pointer-events-none
+                        vigor-magic-shield pointer-events-none
                         absolute
                         z-35
                         h-[118px]

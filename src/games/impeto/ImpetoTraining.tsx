@@ -461,7 +461,7 @@ export function ImpetoTraining() {
   return (
     <main
       className="
-        min-h-[100dvh]
+        game-shell game-impeto min-h-[100dvh]
         select-none
         overscroll-none
         bg-[#080808]
@@ -488,7 +488,7 @@ export function ImpetoTraining() {
         {/* HUD */}
 
         <header
-          className="shrink-0"
+          className="game-hud shrink-0"
         >
 
           <div
@@ -634,7 +634,7 @@ export function ImpetoTraining() {
 
         <section
           className="
-            relative
+            game-stage relative
             flex
             min-h-0
             flex-1
@@ -1022,7 +1022,7 @@ export function ImpetoTraining() {
                     }}
 
                     className="
-                      relative
+                      impeto-target relative
                       flex
                       h-44
                       w-44
@@ -1041,7 +1041,7 @@ export function ImpetoTraining() {
                     <div
                       className="
                         absolute
-                        h-28
+                        impeto-target-ring h-28
                         w-28
                         rounded-full
                         border-[8px]
@@ -1052,7 +1052,7 @@ export function ImpetoTraining() {
                     <div
                       className="
                         absolute
-                        h-14
+                        impeto-target-core h-14
                         w-14
                         rounded-full
                         bg-orange-500
@@ -1063,7 +1063,7 @@ export function ImpetoTraining() {
                     <div
                       className="
                         absolute
-                        h-4
+                        impeto-target-spark h-4
                         w-4
                         rounded-full
                         bg-white
@@ -1108,7 +1108,7 @@ export function ImpetoTraining() {
 
                     <div
                       className="
-                        h-2
+                        impeto-integrity h-2
                         overflow-hidden
                         rounded-full
                         bg-white/10
@@ -1250,7 +1250,7 @@ export function ImpetoTraining() {
 
                   <div
                     className="
-                      relative
+                      impeto-meter relative
                       h-14
                       overflow-hidden
                       rounded-2xl
@@ -1278,7 +1278,7 @@ export function ImpetoTraining() {
                     <div
                       className="
                         absolute
-                        bottom-0
+                        impeto-perfect-zone bottom-0
                         left-[44%]
                         top-0
                         w-[12%]
@@ -1305,7 +1305,7 @@ export function ImpetoTraining() {
                     <div
                       className="
                         absolute
-                        top-1/2
+                        impeto-marker top-1/2
                         h-10
                         w-2
                         -translate-x-1/2
@@ -1333,7 +1333,7 @@ export function ImpetoTraining() {
                     }}
 
                     className="
-                      mt-4
+                      impeto-strike mt-4
                       flex
                       min-h-[76px]
                       w-full

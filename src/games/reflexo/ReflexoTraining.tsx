@@ -13,6 +13,7 @@ import {
 import {
   ArrowLeft,
   ArrowRight,
+  Heart,
   RotateCcw,
   Trophy,
   Wind,
@@ -1016,7 +1017,7 @@ export function ReflexoTraining() {
   return (
     <main
       className="
-        min-h-[100dvh]
+        game-shell game-reflexo min-h-[100dvh]
         overflow-hidden
         overscroll-none
         select-none
@@ -1048,7 +1049,7 @@ export function ReflexoTraining() {
 
         <header
           className="
-            shrink-0
+            game-hud shrink-0
           "
         >
 
@@ -1200,7 +1201,7 @@ export function ReflexoTraining() {
 
         <section
           className="
-            relative
+            game-stage relative
             flex
             min-h-0
             flex-1
@@ -1505,7 +1506,7 @@ export function ReflexoTraining() {
             ref={arenaRef}
 
             className={`
-              relative
+              reflexo-arena relative
               min-h-0
               flex-1
               overflow-hidden
@@ -1646,7 +1647,7 @@ export function ReflexoTraining() {
 
                 <div
                   className="
-                    pointer-events-none
+                    reflexo-hearts pointer-events-none
                     absolute
                     left-1/2
                     top-3
@@ -1690,12 +1691,12 @@ export function ReflexoTraining() {
                           duration: 0.15,
                         }}
 
-                        className="
-                          text-xl
-                          leading-none
-                        "
+                        className="reflexo-heart"
                       >
-                        ❤️
+                        <Heart
+                          size={20}
+                          fill={index < hearts ? 'currentColor' : 'none'}
+                        />
                       </motion.span>
 
                     )
@@ -1709,7 +1710,7 @@ export function ReflexoTraining() {
                   key={projectile.id}
 
                   className="
-                    pointer-events-none
+                    reflexo-projectile pointer-events-none
                     absolute
                     z-20
                     rounded-full
@@ -1759,7 +1760,7 @@ export function ReflexoTraining() {
             {arenaReady && (
               <motion.div
                 className="
-                  pointer-events-none
+                  reflexo-player pointer-events-none
                   absolute
                   bottom-[18px]
                   z-40
