@@ -29,3 +29,6 @@ dist-ssr
 *.backup
 *.tmp
 .treinos-backup/
+
+# Local Vercel project metadata
+.vercel/
