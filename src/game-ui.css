@@ -47,6 +47,11 @@
   --game-accent-strong: #6ee7b7;
 }
 
+.game-fluxo {
+  --game-accent: 167 139 250;
+  --game-accent-strong: #c4b5fd;
+}
+
 .game-hud {
   position: relative;
   z-index: 70;
@@ -502,6 +507,318 @@
   height: auto;
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
 }
+
+/* Fluxo */
+.game-fluxo {
+  background:
+    radial-gradient(circle at 50% 8%, rgb(124 58 237 / 0.18), transparent 38%),
+    linear-gradient(180deg, #0b0815 0%, #06070d 52%, #030407 100%);
+}
+
+.fluxo-ready-orb,
+.fluxo-complete-orb {
+  position: relative;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  color: #ddd6fe;
+  border: 1px solid rgb(196 181 253 / 0.35);
+  border-radius: 30px;
+  background:
+    conic-gradient(from 35deg, rgb(139 92 246 / 0.1), rgb(34 211 238 / 0.2), rgb(139 92 246 / 0.1)),
+    #100d1e;
+  box-shadow: 0 0 34px rgb(124 58 237 / 0.22), inset 0 0 24px rgb(167 139 250 / 0.1);
+}
+
+.fluxo-ready-orb::before,
+.fluxo-complete-orb::before {
+  position: absolute;
+  inset: 9px;
+  content: "";
+  border: 1px dashed rgb(165 243 252 / 0.35);
+  border-radius: 24px;
+  animation: target-rune-spin 10s linear infinite;
+}
+
+.fluxo-complete-orb {
+  color: #1e1b4b;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #c4b5fd, #67e8f9);
+  box-shadow: 0 0 44px rgb(167 139 250 / 0.35);
+}
+
+.fluxo-complete-orb::before { border-radius: 50%; }
+
+.fluxo-rule-card {
+  display: flex;
+  min-height: 86px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 0.09);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgb(255 255 255 / 0.05), rgb(255 255 255 / 0.018));
+}
+
+.fluxo-rule-card strong {
+  margin-top: 5px;
+  font-size: 10px;
+}
+
+.fluxo-rule-card span {
+  margin-top: 2px;
+  color: rgb(255 255 255 / 0.32);
+  font-size: 9px;
+}
+
+.fluxo-countdown {
+  color: #ddd6fe;
+  text-shadow: 0 0 28px rgb(139 92 246 / 0.55), 0 0 60px rgb(34 211 238 / 0.2);
+}
+
+.fluxo-circuit {
+  position: relative;
+  display: grid;
+  width: min(58vw, 224px);
+  height: min(58vw, 224px);
+  place-items: center;
+  border: 1px solid rgb(167 139 250 / 0.18);
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(from 0deg, transparent 0 18deg, rgb(167 139 250 / 0.1) 19deg 20deg, transparent 21deg 44deg),
+    radial-gradient(circle, rgb(76 29 149 / 0.16), rgb(8 10 20 / 0.82) 62%, transparent 63%);
+  box-shadow: 0 0 54px rgb(124 58 237 / 0.14), inset 0 0 42px rgb(34 211 238 / 0.07);
+  transition: filter 160ms ease, box-shadow 160ms ease;
+}
+
+.fluxo-circuit[data-status="stable"] {
+  filter: saturate(1.15);
+  box-shadow: 0 0 62px rgb(34 211 238 / 0.22), inset 0 0 42px rgb(167 139 250 / 0.14);
+}
+
+.fluxo-circuit[data-status="strained"] {
+  filter: saturate(0.7) hue-rotate(14deg);
+  box-shadow: 0 0 46px rgb(244 63 94 / 0.12), inset 0 0 35px rgb(244 63 94 / 0.08);
+}
+
+.fluxo-circuit-runes {
+  position: absolute;
+  inset: 16px;
+  border: 1px dashed rgb(196 181 253 / 0.34);
+  border-radius: 50%;
+  animation: fluxo-spin 12s linear infinite;
+}
+
+.fluxo-circuit-runes::before,
+.fluxo-circuit-runes::after {
+  position: absolute;
+  inset: 19px;
+  content: "";
+  border: 1px solid rgb(103 232 249 / 0.14);
+  transform: rotate(45deg);
+}
+
+.fluxo-circuit-runes::after { transform: rotate(22.5deg); }
+
+.fluxo-circuit-orbit {
+  position: absolute;
+  inset: 31px;
+  border: 2px solid transparent;
+  border-top-color: rgb(103 232 249 / 0.66);
+  border-bottom-color: rgb(167 139 250 / 0.45);
+  border-radius: 50%;
+  animation: fluxo-spin 3.4s linear infinite;
+}
+
+.fluxo-circuit-orbit-b {
+  inset: 44px;
+  border-width: 1px;
+  border-right-color: rgb(221 214 254 / 0.5);
+  border-top-color: transparent;
+  animation-direction: reverse;
+  animation-duration: 2.7s;
+}
+
+.fluxo-cycle-ring {
+  position: absolute;
+  width: 118px;
+  height: 118px;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+
+.fluxo-cycle-track,
+.fluxo-cycle-progress {
+  fill: none;
+  stroke-width: 3;
+}
+
+.fluxo-cycle-track { stroke: rgb(255 255 255 / 0.08); }
+
+.fluxo-cycle-progress {
+  stroke: #a78bfa;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 4px rgb(167 139 250 / 0.65));
+  transition: stroke-dashoffset 50ms linear;
+}
+
+.fluxo-core {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 88px;
+  height: 88px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(221 214 254 / 0.35);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, rgb(255 255 255 / 0.18), rgb(109 40 217 / 0.44) 34%, rgb(14 18 38 / 0.95) 74%);
+  box-shadow: 0 0 26px rgb(139 92 246 / 0.28), inset 0 0 22px rgb(103 232 249 / 0.12);
+}
+
+.fluxo-core strong {
+  margin-top: 2px;
+  color: #f5f3ff;
+  font-size: 30px;
+  line-height: 1;
+  text-shadow: 0 0 16px rgb(196 181 253 / 0.55);
+}
+
+.fluxo-mana-node {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #cffafe;
+  background: #8b5cf6;
+  transform: rotate(45deg);
+  box-shadow: 0 0 10px rgb(103 232 249 / 0.7);
+}
+
+.fluxo-node-a { top: 13px; left: 50%; }
+.fluxo-node-b { top: 50%; right: 13px; }
+.fluxo-node-c { bottom: 13px; left: 50%; }
+.fluxo-node-d { top: 50%; left: 13px; }
+
+.fluxo-meter {
+  position: relative;
+  height: 52px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 17px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1px), rgb(255 255 255 / 0.08) calc(10% - 1px) 10%),
+    linear-gradient(90deg, rgb(34 211 238 / 0.07), rgb(139 92 246 / 0.1), rgb(244 63 94 / 0.06));
+  box-shadow: inset 0 0 20px rgb(0 0 0 / 0.56);
+}
+
+.fluxo-target-zone {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: grid;
+  min-width: 16%;
+  place-items: center;
+  border: 1px solid rgb(207 250 254 / 0.72);
+  border-radius: 11px;
+  background:
+    repeating-linear-gradient(135deg, rgb(103 232 249 / 0.2) 0 5px, rgb(167 139 250 / 0.18) 5px 10px);
+  box-shadow: 0 0 18px rgb(139 92 246 / 0.25), inset 0 0 12px rgb(103 232 249 / 0.12);
+  transition: left 180ms ease, width 180ms ease;
+}
+
+.fluxo-target-zone span {
+  color: rgb(255 255 255 / 0.72);
+  font-size: 7px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.fluxo-marker {
+  position: absolute;
+  z-index: 4;
+  top: 50%;
+  width: 14px;
+  height: 38px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  background: #7c3aed;
+  box-shadow: 0 0 6px #fff, 0 0 18px rgb(139 92 246 / 0.72);
+  translate: -50% -50%;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.fluxo-marker[data-stable="true"] {
+  background: #22d3ee;
+  box-shadow: 0 0 6px #fff, 0 0 20px rgb(34 211 238 / 0.85);
+}
+
+.fluxo-feedback {
+  position: absolute;
+  z-index: 30;
+  bottom: 162px;
+  left: 50%;
+  display: flex;
+  min-width: 170px;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px 18px;
+  border: 1px solid rgb(255 255 255 / 0.12);
+  border-radius: 999px;
+  background: rgb(5 5 12 / 0.88);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 0.3);
+  translate: -50% 0;
+  backdrop-filter: blur(10px);
+}
+
+.fluxo-feedback strong { font-size: 10px; }
+.fluxo-feedback span { margin-top: 1px; font-size: 9px; font-weight: 900; }
+.fluxo-feedback-stable { color: #a5f3fc; }
+.fluxo-feedback-unstable { color: #fda4af; }
+
+.fluxo-control {
+  display: flex;
+  min-height: 72px;
+  touch-action: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #a5f3fc;
+  border: 1px solid rgb(34 211 238 / 0.22);
+  border-radius: 21px;
+  background: linear-gradient(145deg, rgb(34 211 238 / 0.11), rgb(8 47 73 / 0.16));
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.04);
+  transition: transform 80ms ease, border-color 100ms ease, background 100ms ease;
+}
+
+.fluxo-control-boost {
+  color: #ddd6fe;
+  border-color: rgb(167 139 250 / 0.26);
+  background: linear-gradient(145deg, rgb(139 92 246 / 0.15), rgb(46 16 101 / 0.16));
+}
+
+.fluxo-control span {
+  margin-top: 2px;
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.fluxo-control small {
+  margin-top: 1px;
+  color: rgb(255 255 255 / 0.3);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.fluxo-control-active {
+  border-color: rgb(255 255 255 / 0.62);
+  background: linear-gradient(145deg, rgb(103 232 249 / 0.32), rgb(124 58 237 / 0.25));
+  box-shadow: 0 0 24px rgb(139 92 246 / 0.22), inset 0 0 18px rgb(255 255 255 / 0.08);
+  transform: scale(0.97);
+}
+
+@keyframes fluxo-spin { to { transform: rotate(360deg); } }
 
 @keyframes target-rune-spin { to { transform: rotate(360deg); } }
 @keyframes target-core-pulse { 50% { transform: scale(1.08); filter: brightness(1.16); } }

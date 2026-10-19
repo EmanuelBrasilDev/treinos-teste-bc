@@ -28,6 +28,7 @@ npm run lint
 - Ímpeto — Quebra de Alvos
 - Reflexo — Esquiva Relâmpago
 - Vigor — Resistência Extrema
+- Fluxo — Circuito de Mana
 
 ## Deploy no Vercel
 
