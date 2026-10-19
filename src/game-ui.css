@@ -347,7 +347,16 @@
 }
 
 .vigor-magic-shield {
-  filter: drop-shadow(0 0 12px rgb(103 232 249 / 0.58));
+  width: 60px;
+  height: 132px;
+  filter: drop-shadow(0 0 10px rgb(103 232 249 / 0.52));
+  transform-origin: center;
+}
+
+.vigor-magic-shield[data-direction="top"],
+.vigor-magic-shield[data-direction="bottom"] {
+  width: 132px;
+  height: 60px;
 }
 
 .vigor-magic-shield::before,
@@ -359,10 +368,29 @@
 }
 
 .vigor-magic-shield::before {
-  inset: 8px -6px;
-  border: 1px solid rgb(207 250 254 / 0.58);
-  border-radius: 50%;
-  clip-path: polygon(0 0, 100% 14%, 100% 86%, 0 100%);
+  inset: 9px -7px;
+  border: 1px solid rgb(207 250 254 / 0.52);
+  border-radius: 72% 24% 24% 72% / 22% 12% 12% 22%;
+  clip-path: polygon(34% 0, 100% 15%, 100% 85%, 34% 100%, 0 72%, 0 28%);
+  box-shadow: inset 9px 0 16px rgb(103 232 249 / 0.08);
+}
+
+.vigor-magic-shield[data-direction="right"]::before,
+.vigor-magic-shield[data-direction="right"] .vigor-magic-shield-plate {
+  border-radius: 24% 72% 72% 24% / 12% 22% 22% 12%;
+  clip-path: polygon(66% 0, 100% 28%, 100% 72%, 66% 100%, 0 85%, 0 15%);
+}
+
+.vigor-magic-shield[data-direction="top"]::before,
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate {
+  border-radius: 22% 22% 12% 12% / 72% 72% 24% 24%;
+  clip-path: polygon(28% 0, 72% 0, 100% 34%, 85% 100%, 15% 100%, 0 34%);
+}
+
+.vigor-magic-shield[data-direction="bottom"]::before,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate {
+  border-radius: 12% 12% 22% 22% / 24% 24% 72% 72%;
+  clip-path: polygon(15% 0, 85% 0, 100% 66%, 72% 100%, 28% 100%, 0 66%);
 }
 
 .vigor-magic-shield::after {
@@ -374,6 +402,105 @@
   background: #ecfeff;
   box-shadow: 0 0 11px #67e8f9;
   transform: translate(-50%, -50%);
+}
+
+.vigor-magic-shield-plate {
+  border: 2px solid rgb(207 250 254 / 0.82);
+  border-left-width: 4px;
+  border-radius: 72% 24% 24% 72% / 22% 12% 12% 22%;
+  clip-path: polygon(34% 0, 100% 15%, 100% 85%, 34% 100%, 0 72%, 0 28%);
+  background:
+    linear-gradient(90deg, rgb(236 254 255 / 0.28), rgb(34 211 238 / 0.16) 34%, rgb(59 130 246 / 0.06) 72%),
+    repeating-linear-gradient(0deg, transparent 0 18px, rgb(207 250 254 / 0.1) 19px 20px);
+  box-shadow:
+    inset 13px 0 24px rgb(165 243 252 / 0.22),
+    inset -5px 0 14px rgb(37 99 235 / 0.12),
+    0 0 28px rgb(34 211 238 / 0.32);
+}
+
+.vigor-magic-shield[data-direction="right"] .vigor-magic-shield-plate {
+  border-right-width: 4px;
+  border-left-width: 2px;
+  background:
+    linear-gradient(270deg, rgb(236 254 255 / 0.28), rgb(34 211 238 / 0.16) 34%, rgb(59 130 246 / 0.06) 72%),
+    repeating-linear-gradient(0deg, transparent 0 18px, rgb(207 250 254 / 0.1) 19px 20px);
+}
+
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate {
+  border-left-width: 2px;
+  background:
+    linear-gradient(180deg, rgb(236 254 255 / 0.28), rgb(34 211 238 / 0.16) 34%, rgb(59 130 246 / 0.06) 72%),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgb(207 250 254 / 0.1) 19px 20px);
+}
+
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate {
+  border-bottom-width: 4px;
+  background:
+    linear-gradient(0deg, rgb(236 254 255 / 0.28), rgb(34 211 238 / 0.16) 34%, rgb(59 130 246 / 0.06) 72%),
+    repeating-linear-gradient(90deg, transparent 0 18px, rgb(207 250 254 / 0.1) 19px 20px);
+}
+
+.vigor-magic-shield-plate::before,
+.vigor-magic-shield-plate::after {
+  position: absolute;
+  left: 8px;
+  width: 12px;
+  height: 12px;
+  content: "";
+  border: 2px solid rgb(236 254 255 / 0.72);
+  background: rgb(34 211 238 / 0.16);
+  transform: rotate(45deg);
+  box-shadow: 0 0 9px rgb(103 232 249 / 0.52);
+}
+
+.vigor-magic-shield-plate::before { top: 20px; }
+.vigor-magic-shield-plate::after { bottom: 20px; }
+
+.vigor-magic-shield[data-direction="right"] .vigor-magic-shield-plate::before,
+.vigor-magic-shield[data-direction="right"] .vigor-magic-shield-plate::after {
+  right: 8px;
+  left: auto;
+}
+
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate::before,
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate::after,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate::before,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate::after {
+  top: 8px;
+  bottom: auto;
+}
+
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate::before,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate::before { left: 24px; }
+.vigor-magic-shield[data-direction="top"] .vigor-magic-shield-plate::after,
+.vigor-magic-shield[data-direction="bottom"] .vigor-magic-shield-plate::after { right: 24px; left: auto; }
+
+.vigor-magic-shield[data-direction="top"] .vigor-shield-spine,
+.vigor-magic-shield[data-direction="bottom"] .vigor-shield-spine {
+  top: 50%;
+  right: 20px;
+  bottom: auto;
+  left: 20px;
+  width: auto;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.vigor-magic-shield[data-direction="top"] .vigor-shield-rune,
+.vigor-magic-shield[data-direction="bottom"] .vigor-shield-rune {
+  top: 50%;
+  left: 50%;
+}
+
+.vigor-magic-shield[data-direction="top"] .vigor-shield-sweep,
+.vigor-magic-shield[data-direction="bottom"] .vigor-shield-sweep {
+  top: -30%;
+  bottom: -30%;
+  left: auto;
+  width: 40px;
+  height: auto;
+  background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.35), transparent);
 }
 
 @keyframes target-rune-spin { to { transform: rotate(360deg); } }

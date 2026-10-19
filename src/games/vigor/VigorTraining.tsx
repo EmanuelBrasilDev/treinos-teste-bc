@@ -1799,7 +1799,7 @@ export function VigorTraining() {
     ) {
       return {
         left:
-          'calc(50% - 92px)',
+          'calc(50% - 112px)',
         top: '50%',
         transform:
           'translate(-50%, -50%)',
@@ -1812,7 +1812,7 @@ export function VigorTraining() {
     ) {
       return {
         left:
-          'calc(50% + 92px)',
+          'calc(50% + 112px)',
         top: '50%',
         transform:
           'translate(-50%, -50%)',
@@ -1826,18 +1826,18 @@ export function VigorTraining() {
       return {
         left: '50%',
         top:
-          'calc(50% - 92px)',
+          'calc(50% - 105px)',
         transform:
-          'translate(-50%, -50%) rotate(90deg)',
+          'translate(-50%, -50%)',
       }
     }
 
     return {
       left: '50%',
       top:
-        'calc(50% + 92px)',
+        'calc(50% + 105px)',
       transform:
-        'translate(-50%, -50%) rotate(90deg)',
+        'translate(-50%, -50%)',
     }
   }
 
@@ -3093,9 +3093,11 @@ export function VigorTraining() {
                         vigor-magic-shield pointer-events-none
                         absolute
                         z-35
-                        h-[118px]
-                        w-[44px]
                       "
+
+                      data-direction={
+                        magicDirection
+                      }
 
                       style={
                         magicShieldStyle()
@@ -3120,17 +3122,10 @@ export function VigorTraining() {
                         }}
 
                         className="
+                          vigor-magic-shield-plate
                           absolute
                           inset-0
                           overflow-hidden
-                          rounded-[55%]
-                          border-[3px]
-                          border-cyan-100/90
-                          bg-gradient-to-r
-                          from-blue-500/15
-                          via-cyan-200/30
-                          to-blue-500/15
-                          shadow-[inset_0_0_28px_rgba(191,219,254,.3)]
                         "
                       >
 
@@ -3138,10 +3133,11 @@ export function VigorTraining() {
 
                         <div
                           className="
+                            vigor-shield-spine
                             absolute
-                            bottom-3
+                            bottom-5
                             left-1/2
-                            top-3
+                            top-5
                             w-px
                             -translate-x-1/2
                             bg-white/45
@@ -3152,25 +3148,27 @@ export function VigorTraining() {
 
                         <div
                           className="
+                            vigor-shield-rune
                             absolute
                             left-1/2
                             top-1/2
                             flex
-                            h-8
-                            w-8
+                            h-9
+                            w-9
                             -translate-x-1/2
                             -translate-y-1/2
                             items-center
                             justify-center
-                            rounded-full
-                            border
-                            border-cyan-100/50
+                            rotate-45
+                            rounded-[10px]
+                            border-2
+                            border-cyan-100/60
                             text-[11px]
                             font-black
                             text-cyan-50
                           "
                         >
-                          ✦
+                          <span className="rotate-45">✦</span>
                         </div>
 
                         {/* VARREDURA DE ENERGIA */}
@@ -3192,6 +3190,7 @@ export function VigorTraining() {
                           }}
 
                           className="
+                            vigor-shield-sweep
                             absolute
                             left-[-30%]
                             right-[-30%]
