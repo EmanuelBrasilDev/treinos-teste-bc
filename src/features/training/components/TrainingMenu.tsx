@@ -8,6 +8,18 @@ import {
 
 import { trainings } from '../data/trainings'
 import { useTrainingStore } from '../store/useTrainingStore'
+import type { TrainingAttribute } from '../types/training'
+
+const availableTrainings: TrainingAttribute[] = [
+  'impeto',
+  'reflexo',
+  'vigor',
+  'fluxo',
+]
+
+const isTrainingAvailable = (
+  training: TrainingAttribute
+) => availableTrainings.includes(training)
 
 function getDifficultyLabel(
   difficulty: string
@@ -44,7 +56,9 @@ export function TrainingMenu() {
     )
 
   const available =
-    (selected?.id === 'impeto' || selected?.id === 'reflexo' || selected?.id === 'vigor' || selected?.id === 'fluxo')
+    selected
+      ? isTrainingAvailable(selected.id)
+      : false
 
   return (
     <main
@@ -150,7 +164,7 @@ export function TrainingMenu() {
                 selectedTraining
 
               const enabled =
-                (training.id === 'impeto' || training.id === 'reflexo' || training.id === 'vigor' || training.id === 'fluxo')
+                isTrainingAvailable(training.id)
 
               return (
                 <motion.button
@@ -176,12 +190,16 @@ export function TrainingMenu() {
                     scale: 0.985,
                   }}
 
-                  onClick={() =>
+                  onClick={() => {
                     selectTraining(
                       training.id,
                       training.stacks
                     )
-                  }
+
+                    if (enabled) {
+                      startTraining()
+                    }
+                  }}
 
                   className={
                     active
