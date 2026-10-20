@@ -1506,13 +1506,78 @@ export function MoldagemTraining() {
                         }
                       )}
 
+                      {/* Bordas construídas do molde. */}
+                      {shape.guideEdges.map(
+                        (
+                          [
+                            first,
+                            second,
+                          ]
+                        ) => {
+                          const firstNode =
+                            nodes.find(
+                              (node) =>
+                                node.id ===
+                                first
+                            )
+
+                          const secondNode =
+                            nodes.find(
+                              (node) =>
+                                node.id ===
+                                second
+                            )
+
+                          if (
+                            !firstNode?.locked ||
+                            !secondNode?.locked
+                          ) {
+                            return null
+                          }
+
+                          return (
+                            <motion.line
+                              key={
+                                `border-${first}-${second}`
+                              }
+                              initial={{
+                                opacity: 0,
+                              }}
+                              animate={{
+                                opacity: 1,
+                              }}
+                              transition={{
+                                duration: 0.22,
+                                ease: 'easeOut',
+                              }}
+                              x1={
+                                firstNode.x
+                              }
+                              y1={
+                                firstNode.y
+                              }
+                              x2={
+                                secondNode.x
+                              }
+                              y2={
+                                secondNode.y
+                              }
+                              stroke="rgb(232 121 249)"
+                              strokeWidth="5"
+                              strokeLinecap="round"
+                              filter="url(#moldagem-glow)"
+                            />
+                          )
+                        }
+                      )}
+
+                      {/* Conexões internas, sem guia tracejado. */}
                       {shape.connectionEdges.map(
                         (
                           [
                             first,
                             second,
-                          ],
-                          index
+                          ]
                         ) => {
                           const isGuideEdge =
                             shape.guideEdges.some(
@@ -1534,6 +1599,10 @@ export function MoldagemTraining() {
                                 )
                             )
 
+                          if (isGuideEdge) {
+                            return null
+                          }
+
                           const firstNode =
                             nodes.find(
                               (node) =>
@@ -1548,31 +1617,6 @@ export function MoldagemTraining() {
                                 second
                             )
 
-                          /*
-                           * O contorno continua forte.
-                           *
-                           * No quadrado, as diagonais
-                           * precisam permanecer claramente
-                           * visíveis para deixar evidente
-                           * que todos os quatro nós estão
-                           * conectados entre si.
-                           */
-                          const connectionOpacity =
-                            isGuideEdge
-                              ? 1
-                              : shape.id ===
-                                  'square'
-                                ? 0.75
-                                : 0.42
-
-                          const connectionWidth =
-                            isGuideEdge
-                              ? 5
-                              : shape.id ===
-                                  'square'
-                                ? 3.25
-                                : 2.25
-
                           if (
                             !firstNode?.locked ||
                             !secondNode?.locked
@@ -1580,22 +1624,32 @@ export function MoldagemTraining() {
                             return null
                           }
 
+                          const internalOpacity =
+                            shape.id ===
+                              'square'
+                              ? 0.75
+                              : 0.42
+
+                          const internalWidth =
+                            shape.id ===
+                              'square'
+                              ? 3.25
+                              : 2.25
+
                           return (
                             <motion.line
                               key={
-                                `mana-${index}`
+                                `internal-${first}-${second}`
                               }
                               initial={{
                                 opacity: 0,
-                                pathLength: 0,
                               }}
                               animate={{
                                 opacity:
-                                  connectionOpacity,
-                                pathLength: 1,
+                                  internalOpacity,
                               }}
                               transition={{
-                                duration: 0.32,
+                                duration: 0.22,
                                 ease: 'easeOut',
                               }}
                               x1={
@@ -1612,7 +1666,7 @@ export function MoldagemTraining() {
                               }
                               stroke="rgb(232 121 249)"
                               strokeWidth={
-                                connectionWidth
+                                internalWidth
                               }
                               strokeLinecap="round"
                               filter="url(#moldagem-glow)"
