@@ -43,7 +43,10 @@ interface ShapeDefinition {
   id: string
   name: string
   points: PointCoord[]
-  edges: Array<[number, number]>
+
+  guideEdges: Array<[number, number]>
+
+  connectionEdges: Array<[number, number]>
 }
 
 const BOARD_WIDTH = 360
@@ -72,6 +75,32 @@ const createLoopEdges = (
     ]
   )
 
+const createCompleteEdges = (
+  count: number
+): Array<[number, number]> => {
+  const edges:
+    Array<[number, number]> = []
+
+  for (
+    let first = 0;
+    first < count;
+    first += 1
+  ) {
+    for (
+      let second = first + 1;
+      second < count;
+      second += 1
+    ) {
+      edges.push([
+        first,
+        second,
+      ])
+    }
+  }
+
+  return edges
+}
+
 const SHAPES: ShapeDefinition[] = [
   {
     id: 'triangle',
@@ -81,7 +110,8 @@ const SHAPES: ShapeDefinition[] = [
       { x: 275, y: 245 },
       { x: 85, y: 245 },
     ],
-    edges: createLoopEdges(3),
+    guideEdges: createLoopEdges(3),
+    connectionEdges: createCompleteEdges(3),
   },
 
   {
@@ -93,7 +123,8 @@ const SHAPES: ShapeDefinition[] = [
       { x: 255, y: 245 },
       { x: 105, y: 245 },
     ],
-    edges: createLoopEdges(4),
+    guideEdges: createLoopEdges(4),
+    connectionEdges: createCompleteEdges(4),
   },
 
   {
@@ -106,7 +137,8 @@ const SHAPES: ShapeDefinition[] = [
       { x: 118, y: 258 },
       { x: 78, y: 138 },
     ],
-    edges: createLoopEdges(5),
+    guideEdges: createLoopEdges(5),
+    connectionEdges: createCompleteEdges(5),
   },
 
   {
@@ -122,7 +154,8 @@ const SHAPES: ShapeDefinition[] = [
       { x: 92, y: 178 },
       { x: 85, y: 92 },
     ],
-    edges: createLoopEdges(8),
+    guideEdges: createLoopEdges(8),
+    connectionEdges: createCompleteEdges(8),
   },
 
   {
@@ -140,7 +173,8 @@ const SHAPES: ShapeDefinition[] = [
       { x: 70, y: 128 },
       { x: 153, y: 121 },
     ],
-    edges: createLoopEdges(10),
+    guideEdges: createLoopEdges(10),
+    connectionEdges: createCompleteEdges(10),
   },
 ]
 
@@ -1066,9 +1100,8 @@ export function MoldagemTraining() {
                 >
                   Arraste cada Nó de Mana
                   até o alvo de mesmo
-                  número. Nós estabilizados
-                  se conectam
-                  automaticamente.
+                  número. Cada novo nó se conecta
+                  aos nós já estabilizados.
                 </p>
 
                 <div
@@ -1413,7 +1446,7 @@ export function MoldagemTraining() {
                         stroke="rgba(255,255,255,0.045)"
                       />
 
-                      {shape.edges.map(
+                      {shape.guideEdges.map(
                         (
                           [
                             first,
@@ -1448,7 +1481,7 @@ export function MoldagemTraining() {
                         }
                       )}
 
-                      {shape.edges.map(
+                      {shape.connectionEdges.map(
                         (
                           [
                             first,
@@ -1456,6 +1489,26 @@ export function MoldagemTraining() {
                           ],
                           index
                         ) => {
+                          const isGuideEdge =
+                            shape.guideEdges.some(
+                              ([
+                                guideFirst,
+                                guideSecond,
+                              ]) =>
+                                (
+                                  guideFirst ===
+                                    first &&
+                                  guideSecond ===
+                                    second
+                                ) ||
+                                (
+                                  guideFirst ===
+                                    second &&
+                                  guideSecond ===
+                                    first
+                                )
+                            )
+
                           const firstNode =
                             nodes.find(
                               (node) =>
@@ -1486,7 +1539,10 @@ export function MoldagemTraining() {
                                 opacity: 0,
                               }}
                               animate={{
-                                opacity: 1,
+                                opacity:
+                                  isGuideEdge
+                                    ? 1
+                                    : 0.42,
                               }}
                               x1={
                                 firstNode.x
@@ -1501,7 +1557,11 @@ export function MoldagemTraining() {
                                 secondNode.y
                               }
                               stroke="rgb(232 121 249)"
-                              strokeWidth="5"
+                              strokeWidth={
+                                isGuideEdge
+                                  ? 5
+                                  : 2.25
+                              }
                               strokeLinecap="round"
                               filter="url(#moldagem-glow)"
                             />
@@ -1847,6 +1907,8 @@ export function MoldagemTraining() {
                   >
                     Arraste um nó até o
                     alvo de mesmo número.
+                    Cada encaixe amplia a
+                    rede de mana.
                   </p>
                 </div>
               </motion.div>
