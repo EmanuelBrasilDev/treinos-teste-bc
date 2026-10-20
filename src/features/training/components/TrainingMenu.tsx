@@ -16,6 +16,7 @@ const availableTrainings: TrainingAttribute[] = [
   'vigor',
   'fluxo',
   'moldagem',
+  'ruptura',
 ]
 
 const isTrainingAvailable = (

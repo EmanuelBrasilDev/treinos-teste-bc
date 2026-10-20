@@ -7,6 +7,8 @@ import { MoldagemTraining } from './games/moldagem/MoldagemTraining'
 import { ReflexoTraining } from './games/reflexo/ReflexoTraining'
 import { VigorTraining } from './games/vigor/VigorTraining'
 
+import { RupturaTraining } from './games/ruptura/RupturaTraining'
+
 export default function App() {
   const {
     screen,
@@ -47,6 +49,19 @@ export default function App() {
   ) {
     return <VigorTraining />
   }
+
+  if (
+
+    screen === 'training' &&
+
+    selectedTraining === 'ruptura'
+
+  ) {
+
+    return <RupturaTraining />
+
+  }
+
 
   return <TrainingMenu />
 }

@@ -55,9 +55,9 @@ export const trainings: TrainingDefinition[] = [
     id: 'ruptura',
     name: 'Ruptura',
     icon: '💥',
-    minigame: 'Destruição Máxima',
+    minigame: 'Artilharia Mágica',
     description:
-      'Encontre os pontos vulneráveis e destrua o alvo.',
+      'Puxe, mire e lance magias ofensivas para romper alvos com força e precisão.',
     stacks: 100,
     difficulty: 'medio',
   },
