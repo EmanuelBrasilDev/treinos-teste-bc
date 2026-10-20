@@ -111,7 +111,15 @@ const SHAPES: ShapeDefinition[] = [
       { x: 85, y: 245 },
     ],
     guideEdges: createLoopEdges(3),
-    connectionEdges: createCompleteEdges(3),
+
+    // Todas as ligações do triângulo.
+    // 1-2 e 1-3 formam as laterais.
+    // 2-3 fecha explicitamente a base.
+    connectionEdges: [
+      [0, 1],
+      [0, 2],
+      [1, 2],
+    ],
   },
 
   {
@@ -124,7 +132,18 @@ const SHAPES: ShapeDefinition[] = [
       { x: 105, y: 245 },
     ],
     guideEdges: createLoopEdges(4),
-    connectionEdges: createCompleteEdges(4),
+
+    // Quatro lados.
+    // As duas últimas ligações
+    // formam o X interno.
+    connectionEdges: [
+      [0, 1],
+      [1, 2],
+      [2, 3],
+      [3, 0],
+      [0, 2],
+      [1, 3],
+    ],
   },
 
   {
@@ -832,12 +851,18 @@ export function MoldagemTraining() {
         'ESTRUTURA ESTABILIZADA'
       )
 
+      /*
+       * Mantém a construção final
+       * completamente visível para
+       * que o jogador veja todas
+       * as conexões antes de avançar.
+       */
       transitionTimerRef.current =
         window.setTimeout(
           () => {
             advanceShape()
           },
-          850
+          1500
         )
 
       return
@@ -1523,6 +1548,31 @@ export function MoldagemTraining() {
                                 second
                             )
 
+                          /*
+                           * O contorno continua forte.
+                           *
+                           * No quadrado, as diagonais
+                           * precisam permanecer claramente
+                           * visíveis para deixar evidente
+                           * que todos os quatro nós estão
+                           * conectados entre si.
+                           */
+                          const connectionOpacity =
+                            isGuideEdge
+                              ? 1
+                              : shape.id ===
+                                  'square'
+                                ? 0.75
+                                : 0.42
+
+                          const connectionWidth =
+                            isGuideEdge
+                              ? 5
+                              : shape.id ===
+                                  'square'
+                                ? 3.25
+                                : 2.25
+
                           if (
                             !firstNode?.locked ||
                             !secondNode?.locked
@@ -1537,12 +1587,16 @@ export function MoldagemTraining() {
                               }
                               initial={{
                                 opacity: 0,
+                                pathLength: 0,
                               }}
                               animate={{
                                 opacity:
-                                  isGuideEdge
-                                    ? 1
-                                    : 0.42,
+                                  connectionOpacity,
+                                pathLength: 1,
+                              }}
+                              transition={{
+                                duration: 0.32,
+                                ease: 'easeOut',
                               }}
                               x1={
                                 firstNode.x
@@ -1558,9 +1612,7 @@ export function MoldagemTraining() {
                               }
                               stroke="rgb(232 121 249)"
                               strokeWidth={
-                                isGuideEdge
-                                  ? 5
-                                  : 2.25
+                                connectionWidth
                               }
                               strokeLinecap="round"
                               filter="url(#moldagem-glow)"
@@ -1716,54 +1768,6 @@ export function MoldagemTraining() {
                             </text>
                           </g>
                         )
-                      )}
-
-                      {shapeSolved && (
-                        <motion.g
-                          initial={{
-                            opacity: 0,
-                            scale: 0.92,
-                          }}
-                          animate={{
-                            opacity: 1,
-                            scale: 1,
-                          }}
-                          style={{
-                            transformOrigin:
-                              '180px 190px',
-                          }}
-                        >
-                          <circle
-                            cx="180"
-                            cy="190"
-                            r="42"
-                            fill="rgba(217,70,239,0.11)"
-                            stroke="rgba(232,121,249,0.55)"
-                            strokeWidth="2"
-                          />
-
-                          <text
-                            x="180"
-                            y="186"
-                            textAnchor="middle"
-                            fontSize="10"
-                            fontWeight="900"
-                            fill="rgba(255,255,255,0.55)"
-                          >
-                            MANA
-                          </text>
-
-                          <text
-                            x="180"
-                            y="205"
-                            textAnchor="middle"
-                            fontSize="13"
-                            fontWeight="900"
-                            fill="rgb(240 171 252)"
-                          >
-                            ESTÁVEL
-                          </text>
-                        </motion.g>
                       )}
                     </svg>
                   </div>
