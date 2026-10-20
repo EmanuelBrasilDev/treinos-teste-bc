@@ -1433,10 +1433,15 @@ export function MoldagemTraining() {
                       <defs>
                         <filter
                           id="moldagem-glow"
-                          x="-50%"
-                          y="-50%"
-                          width="200%"
-                          height="200%"
+                          filterUnits="userSpaceOnUse"
+                          x="-20"
+                          y="-20"
+                          width={
+                            BOARD_WIDTH + 40
+                          }
+                          height={
+                            BOARD_HEIGHT + 40
+                          }
                         >
                           <feGaussianBlur
                             stdDeviation="3"
