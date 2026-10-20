@@ -3,6 +3,7 @@ import { useTrainingStore } from './features/training/store/useTrainingStore'
 
 import { ImpetoTraining } from './games/impeto/ImpetoTraining'
 import { FluxoTraining } from './games/fluxo/FluxoTraining'
+import { MoldagemTraining } from './games/moldagem/MoldagemTraining'
 import { ReflexoTraining } from './games/reflexo/ReflexoTraining'
 import { VigorTraining } from './games/vigor/VigorTraining'
 
@@ -31,6 +32,13 @@ export default function App() {
     selectedTraining === 'fluxo'
   ) {
     return <FluxoTraining />
+  }
+
+  if (
+    screen === 'training' &&
+    selectedTraining === 'moldagem'
+  ) {
+    return <MoldagemTraining />
   }
 
   if (

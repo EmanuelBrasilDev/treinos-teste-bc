@@ -45,9 +45,9 @@ export const trainings: TrainingDefinition[] = [
     id: 'moldagem',
     name: 'Moldagem',
     icon: '🧵',
-    minigame: 'Traçado Mágico',
+    minigame: 'Construção de Mana',
     description:
-      'Reproduza formas mágicas com precisão e controle.',
+      'Arraste nós de mana, encaixe-os nos pontos corretos e construa formas mágicas.',
     stacks: 60,
     difficulty: 'dificil',
   },
