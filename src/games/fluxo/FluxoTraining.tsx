@@ -43,6 +43,7 @@ const FLOW_MAX = 100
 const INITIAL_FLOW = 50
 
 const CONTROL_SPEED = 32
+const PASSIVE_RIGHT_SPEED = 18
 const CYCLE_DURATION = 2000
 const TARGET_HALF_WIDTH = 8
 const MIN_TARGET_CENTER = FLOW_MIN + TARGET_HALF_WIDTH
@@ -317,18 +318,29 @@ export function FluxoTraining() {
 
       lastFrameRef.current = time
 
-      const inputAxis =
-        containRef.current === boostRef.current
+      const containPressed = containRef.current
+      const boostPressed = boostRef.current
+      const controlsBalanced =
+        containPressed && boostPressed
+
+      const controlSpeed = controlsBalanced
+        ? 0
+        : containPressed
+          ? -CONTROL_SPEED
+          : boostPressed
+            ? CONTROL_SPEED
+            : PASSIVE_RIGHT_SPEED
+
+      const naturalDrift =
+        controlsBalanced
           ? 0
-          : containRef.current
-            ? -1
-            : 1
+          : driftRef.current
 
       flowRef.current = clamp(
         flowRef.current +
           (
-            inputAxis * CONTROL_SPEED +
-            driftRef.current
+            controlSpeed +
+            naturalDrift
           ) *
             delta,
         FLOW_MIN,
@@ -604,6 +616,9 @@ export function FluxoTraining() {
                 </div>
 
                 <p className="mt-4 text-xs font-bold text-white/30">
+                  Sem comando, o Fluxo avança para a direita. Pressione os dois controles para equilibrar.
+                </p>
+                <p className="mt-1 text-xs font-bold text-white/20">
                   Avaliação a cada 2 segundos
                 </p>
 
@@ -699,7 +714,11 @@ export function FluxoTraining() {
                     <div className="text-right">
                       <p className="text-[9px] font-black uppercase tracking-widest text-white/30">Tendência</p>
                       <p className="text-xs font-black text-white/55">
-                        {drift >= 0 ? '↑ Crescente' : '↓ Decrescente'}
+                        {containActive && boostActive
+                          ? '↔ Equilíbrio'
+                          : drift >= 0
+                            ? '↑ Crescente'
+                            : '↓ Decrescente'}
                       </p>
                     </div>
                   </div>
