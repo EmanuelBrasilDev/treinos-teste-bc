@@ -1334,10 +1334,16 @@ if (
           sm:max-w-lg
         "
       >
-        <header className="shrink-0">
+        <header
+          className="
+            shrink-0
+            pb-3
+          "
+        >
           <div
             className="
-              flex
+              grid
+              grid-cols-[44px_minmax(0,1fr)_auto]
               items-center
               gap-3
             "
@@ -1691,24 +1697,32 @@ if (
                   opacity: 1,
                 }}
                 className="
-                  flex
+                  grid
                   min-h-0
                   flex-1
-                  flex-col
+                  grid-rows-[auto_minmax(0,1fr)_auto]
+                  gap-3
                 "
               >
                 <div
                   className="
-                    mb-2
-                    flex
-                    justify-between
-                    px-1
+                    grid
+                    grid-cols-2
+                    items-center
+                    rounded-2xl
+                    border
+                    border-white/10
+                    bg-white/[0.025]
+                    px-4
+                    py-2.5
                   "
                 >
                   <p
                     className="
-                      text-xs
+                      text-[10px]
                       font-black
+                      uppercase
+                      tracking-[0.16em]
                       text-white/40
                     "
                   >
@@ -1717,9 +1731,12 @@ if (
 
                   <p
                     className="
-                      text-xs
+                      text-[10px]
                       font-black
+                      uppercase
+                      tracking-[0.16em]
                       text-white/40
+                      text-right
                     "
                   >
                     {shots} DISPAROS
@@ -1730,8 +1747,13 @@ if (
                   className="
                     flex
                     min-h-0
-                    flex-1
                     items-center
+                    justify-center
+                    overflow-hidden
+                    rounded-[28px]
+                    border
+                    border-white/10
+                    bg-white/[0.025]
                   "
                 >
                   <svg
@@ -1739,15 +1761,14 @@ if (
                     viewBox={
                       `0 0 ${BOARD_WIDTH} ${BOARD_HEIGHT}`
                     }
+                    preserveAspectRatio="xMidYMid meet"
                     className="
-                      aspect-[18/25]
+                      block
+                      h-full
+                      min-h-0
                       w-full
                       select-none
                       touch-none
-                      rounded-[28px]
-                      border
-                      border-white/10
-                      bg-white/[0.025]
                     "
                   >
                     <defs>
@@ -1967,24 +1988,13 @@ if (
                         />
                       </g>
                     )}
-
-                    <text
-                      x="180"
-                      y="474"
-                      textAnchor="middle"
-                      fontSize="11"
-                      fontWeight="900"
-                      fill="rgba(255,255,255,0.28)"
-                    >
-                      PUXE PARA BAIXO E SOLTE
-                    </text>
                   </svg>
                 </div>
 
                 <div
                   className="
                     shrink-0
-                    pt-2
+                    space-y-2
                   "
                 >
                   <div
@@ -2047,9 +2057,11 @@ if (
                   <div
                     className="
                       flex
-                      h-10
+                      min-h-6
                       items-center
                       justify-center
+                      px-2
+                      text-center
                     "
                   >
                     <AnimatePresence
@@ -2080,6 +2092,21 @@ if (
                       )}
                     </AnimatePresence>
                   </div>
+
+                  <p
+                    className="
+                      px-3
+                      text-center
+                      text-[10px]
+                      font-bold
+                      uppercase
+                      tracking-[0.12em]
+                      text-white/30
+                    "
+                  >
+                    Puxe para baixo,
+                    antecipe o alvo e solte
+                  </p>
                 </div>
               </motion.div>
             )}

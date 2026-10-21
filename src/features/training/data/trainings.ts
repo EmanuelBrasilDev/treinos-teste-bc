@@ -49,7 +49,7 @@ export const trainings: TrainingDefinition[] = [
     description:
       'Arraste nós de mana, encaixe-os nos pontos corretos e construa formas mágicas.',
     stacks: 60,
-    difficulty: 'dificil',
+    difficulty: 'medio',
   },
   {
     id: 'ruptura',
@@ -59,7 +59,7 @@ export const trainings: TrainingDefinition[] = [
     description:
       'Puxe, mire e lance magias ofensivas para romper alvos com força e precisão.',
     stacks: 100,
-    difficulty: 'medio',
+    difficulty: 'facil',
   },
   {
     id: 'discernimento',
