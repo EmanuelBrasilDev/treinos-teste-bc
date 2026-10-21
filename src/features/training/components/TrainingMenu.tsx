@@ -252,11 +252,13 @@ export function TrainingMenu() {
                           text-white/30
                         "
                       >
-                        Meta
+                        Limite
                       </p>
 
                       <p className="font-black">
-                        {training.stacks}
+                        {training.id === 'discernimento'
+                          ? 100
+                          : training.stacks}
                       </p>
 
                     </div>

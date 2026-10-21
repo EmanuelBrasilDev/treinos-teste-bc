@@ -36,9 +36,11 @@ type GamePhase =
   | 'ready'
   | 'countdown'
   | 'playing'
+  | 'failed'
   | 'complete'
 
 const REVEAL_DURATION = 1200
+const MAX_MOVEMENTS = 100
 
 const getTileStyle = (
   tile: number
@@ -166,20 +168,54 @@ export function DiscernimentoTraining() {
     setPuzzle(nextPuzzle)
     setMovements(nextMovements)
 
-    if (!isPuzzleSolved(nextPuzzle)) return
+    /*
+     * Vitória tem prioridade sobre o limite.
+     *
+     * Portanto, se a imagem for resolvida
+     * exatamente no movimento 100,
+     * o jogador vence normalmente.
+     */
+    if (isPuzzleSolved(nextPuzzle)) {
+      solvedRef.current = true
+      setSolved(true)
+      addStack(targetStacks)
 
-    solvedRef.current = true
-    setSolved(true)
-    addStack(targetStacks)
+      completionTimerRef.current =
+        window.setTimeout(
+          () => {
+            phaseRef.current =
+              'complete'
 
-    completionTimerRef.current = window.setTimeout(
-      () => {
-        phaseRef.current = 'complete'
-        setPhase('complete')
-        completionTimerRef.current = null
-      },
-      REVEAL_DURATION
-    )
+            setPhase(
+              'complete'
+            )
+
+            completionTimerRef.current =
+              null
+          },
+          REVEAL_DURATION
+        )
+
+      return
+    }
+
+    /*
+     * Movimento 100 sem solucionar:
+     * encerra imediatamente a tentativa.
+     *
+     * Nenhum Stack é concedido.
+     */
+    if (
+      nextMovements >=
+      MAX_MOVEMENTS
+    ) {
+      solvedRef.current = true
+      phaseRef.current = 'failed'
+
+      setPhase(
+        'failed'
+      )
+    }
   }
 
   return (
@@ -264,7 +300,7 @@ export function DiscernimentoTraining() {
                   {[
                     ['Toque', 'ao lado do vazio'],
                     ['Organize', 'as 8 peças'],
-                    ['Conclua', 'uma única vez'],
+                    ['Limite', '100 movimentos'],
                   ].map(([title, detail]) => (
                     <div
                       key={title}
@@ -320,7 +356,7 @@ export function DiscernimentoTraining() {
                       Movimentos
                     </p>
                     <p className="mt-0.5 font-black">
-                      {movements}
+                      {movements}/{MAX_MOVEMENTS}
                     </p>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-2.5 text-right">
@@ -419,6 +455,77 @@ export function DiscernimentoTraining() {
                     )}
                   </AnimatePresence>
                 </div>
+              </motion.div>
+            )}
+
+            {phase === 'failed' && (
+              <motion.div
+                key="failed"
+                initial={{
+                  opacity: 0,
+                  scale: 0.94,
+                }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                }}
+                className="flex h-full flex-col items-center justify-center text-center"
+              >
+                <div className="flex h-24 w-24 items-center justify-center rounded-[28px] border border-red-300/20 bg-red-400/10 text-3xl font-black text-red-300 shadow-[0_0_45px_rgba(248,113,113,.1)]">
+                  100
+                </div>
+
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-red-300">
+                  Limite atingido
+                </p>
+
+                <h2 className="mt-2 text-3xl font-black">
+                  Mosaico incompleto
+                </h2>
+
+                <p className="mt-3 max-w-xs text-sm leading-6 text-white/45">
+                  Você chegou ao limite de 100 movimentos antes de reconstruir a imagem.
+                </p>
+
+                <div className="mt-5 grid w-full grid-cols-2 gap-2">
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30">
+                      Movimentos
+                    </p>
+
+                    <p className="mt-1 text-xl font-black text-red-200">
+                      {movements}/{MAX_MOVEMENTS}
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-right">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-white/30">
+                      Peças corretas
+                    </p>
+
+                    <p className="mt-1 text-xl font-black text-cyan-200">
+                      {correctTiles}/8
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={startGame}
+                  className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-cyan-300 font-black text-cyan-950 active:scale-[0.98]"
+                >
+                  <RotateCcw size={18} />
+
+                  Tentar Novamente
+                </button>
+
+                <button
+                  type="button"
+                  onClick={exitTraining}
+                  className="mt-3 min-h-14 w-full rounded-2xl border border-white/10 bg-white/5 font-black active:scale-[0.98]"
+                >
+                  Voltar aos Treinos
+                </button>
               </motion.div>
             )}
 
