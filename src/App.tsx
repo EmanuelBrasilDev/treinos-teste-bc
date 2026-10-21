@@ -1,3 +1,8 @@
+import {
+  lazy,
+  Suspense,
+} from 'react'
+
 import { TrainingMenu } from './features/training/components/TrainingMenu'
 import { useTrainingStore } from './features/training/store/useTrainingStore'
 
@@ -8,6 +13,14 @@ import { ReflexoTraining } from './games/reflexo/ReflexoTraining'
 import { VigorTraining } from './games/vigor/VigorTraining'
 
 import { RupturaTraining } from './games/ruptura/RupturaTraining'
+
+const DiscernimentoTraining = lazy(() =>
+  import(
+    './games/discernimento/DiscernimentoTraining'
+  ).then((module) => ({
+    default: module.DiscernimentoTraining,
+  }))
+)
 
 export default function App() {
   const {
@@ -61,7 +74,20 @@ export default function App() {
     return <RupturaTraining />
 
   }
-
+  if (
+    screen === 'training' &&
+    selectedTraining === 'discernimento'
+  ) {
+    return (
+      <Suspense
+        fallback={
+          <main className="min-h-[100dvh] bg-[#070b13]" />
+        }
+      >
+        <DiscernimentoTraining />
+      </Suspense>
+    )
+  }
 
   return <TrainingMenu />
 }

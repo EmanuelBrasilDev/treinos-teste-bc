@@ -65,9 +65,9 @@ export const trainings: TrainingDefinition[] = [
     id: 'discernimento',
     name: 'Discernimento',
     icon: '📚',
-    minigame: 'Análise de Combate',
+    minigame: 'Mosaico Arcano',
     description:
-      'Analise situações e escolha rapidamente a melhor decisão.',
+      'Reorganize as peças e reconstrua corretamente a imagem.',
     stacks: 50,
     difficulty: 'muito-dificil',
   },
