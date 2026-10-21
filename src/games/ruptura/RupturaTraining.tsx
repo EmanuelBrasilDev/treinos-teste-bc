@@ -57,6 +57,19 @@ const PROJECTILE_RADIUS = 10
 const VELOCITY_SCALE = 6.4
 const GRAVITY = 115
 
+/*
+ * Movimento contínuo dos alvos.
+ *
+ * A dificuldade cresce com os Stacks,
+ * mas o padrão continua previsível:
+ * movimento horizontal com rebote.
+ */
+const TARGET_SIDE_PADDING = 20
+
+const TARGET_SPEED_SLOW = 48
+const TARGET_SPEED_MEDIUM = 68
+const TARGET_SPEED_FAST = 88
+
 const TARGET_POSITIONS: Point[] = [
   { x: 90, y: 145 },
   { x: 270, y: 130 },
@@ -86,6 +99,30 @@ const distance = (
     a.x - b.x,
     a.y - b.y
   )
+
+function getTargetSpeed(
+  stacks: number,
+  number: number
+) {
+  const baseSpeed =
+    stacks <= 30
+      ? TARGET_SPEED_SLOW
+      : stacks <= 65
+        ? TARGET_SPEED_MEDIUM
+        : TARGET_SPEED_FAST
+
+  const variation =
+    (
+      number * 7
+    ) %
+      13 -
+    6
+
+  return (
+    baseSpeed +
+    variation
+  )
+}
 
 function makeTarget(
   number: number,
@@ -354,7 +391,27 @@ export function RupturaTraining() {
       null
     )
 
-  const pull =
+  
+  /*
+   * Loop separado do alvo.
+   *
+   * Não reutilizar frameRef porque
+   * ele pertence ao projétil.
+   */
+  const targetFrameRef =
+    useRef<number | null>(
+      null
+    )
+
+  const targetLastFrameRef =
+    useRef<number | null>(
+      null
+    )
+
+  const targetVelocityRef =
+    useRef(0)
+
+const pull =
     dragging
       ? distance(
           aim,
@@ -403,7 +460,23 @@ export function RupturaTraining() {
           null
       }
 
+      
       if (
+        targetFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          targetFrameRef.current
+        )
+
+        targetFrameRef.current =
+          null
+      }
+
+      targetLastFrameRef.current =
+        null
+
+if (
         feedbackTimerRef.current !==
         null
       ) {
@@ -477,6 +550,22 @@ export function RupturaTraining() {
             stacks,
             targetStacks
           )
+
+        
+        const direction =
+          number % 2 === 0
+            ? -1
+            : 1
+
+        targetVelocityRef.current =
+          getTargetSpeed(
+            stacks,
+            number
+          ) *
+          direction
+
+        targetLastFrameRef.current =
+          null
 
         targetRef.current =
           next
@@ -613,6 +702,153 @@ export function RupturaTraining() {
   }, [
     phase,
     countdown,
+  ])
+
+  useEffect(() => {
+    if (
+      phase !==
+      'playing'
+    ) {
+      return
+    }
+
+    let active = true
+
+    targetLastFrameRef.current =
+      null
+
+    const moveTarget = (
+      time: number
+    ) => {
+      if (
+        !active ||
+        phaseRef.current !==
+          'playing'
+      ) {
+        return
+      }
+
+      if (
+        targetLastFrameRef.current ===
+        null
+      ) {
+        targetLastFrameRef.current =
+          time
+      }
+
+      const delta =
+        Math.min(
+          (
+            time -
+            targetLastFrameRef.current
+          ) /
+            1000,
+          0.032
+        )
+
+      targetLastFrameRef.current =
+        time
+
+      const currentTarget =
+        targetRef.current
+
+      if (currentTarget) {
+        const minX =
+          TARGET_SIDE_PADDING +
+          currentTarget.radius
+
+        const maxX =
+          BOARD_WIDTH -
+          TARGET_SIDE_PADDING -
+          currentTarget.radius
+
+        let velocity =
+          targetVelocityRef.current
+
+        let nextX =
+          currentTarget.x +
+          velocity *
+            delta
+
+        /*
+         * Rebote horizontal.
+         */
+        if (
+          nextX <= minX
+        ) {
+          nextX =
+            minX
+
+          velocity =
+            Math.abs(
+              velocity
+            )
+        } else if (
+          nextX >= maxX
+        ) {
+          nextX =
+            maxX
+
+          velocity =
+            -Math.abs(
+              velocity
+            )
+        }
+
+        targetVelocityRef.current =
+          velocity
+
+        const movedTarget = {
+          ...currentTarget,
+          x: nextX,
+        }
+
+        /*
+         * Atualizamos state + ref.
+         *
+         * checkHit() usa targetRef,
+         * portanto a colisão acompanha
+         * a posição atual do alvo.
+         */
+        targetRef.current =
+          movedTarget
+
+        setTarget(
+          movedTarget
+        )
+      }
+
+      targetFrameRef.current =
+        requestAnimationFrame(
+          moveTarget
+        )
+    }
+
+    targetFrameRef.current =
+      requestAnimationFrame(
+        moveTarget
+      )
+
+    return () => {
+      active = false
+
+      if (
+        targetFrameRef.current !==
+        null
+      ) {
+        cancelAnimationFrame(
+          targetFrameRef.current
+        )
+
+        targetFrameRef.current =
+          null
+      }
+
+      targetLastFrameRef.current =
+        null
+    }
+  }, [
+    phase,
   ])
 
   useEffect(
@@ -1311,8 +1547,9 @@ export function RupturaTraining() {
                   "
                 >
                   Segure a esfera,
-                  puxe para trás,
-                  mire e solte para
+                  puxe para trás e
+                  antecipe o alvo em
+                  movimento antes de
                   lançar a magia.
                 </p>
 
